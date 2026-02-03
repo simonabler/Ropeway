@@ -1,0 +1,123 @@
+<div class="map-wrapper">
+  <!-- Map Container -->
+  <div id="map-container" class="map-view"></div>
+
+  <!-- Instructions Overlay -->
+  @if (showInstructions()) {
+    <div class="instructions-overlay" (click)="hideInstructions()">
+      <div class="instructions-card">
+        <h3>📍 Punkte setzen</h3>
+        <ol>
+          <li><strong>Tippen</strong> auf Karte = Startpunkt (Tal)</li>
+          <li><strong>Nochmal tippen</strong> = Endpunkt (Berg)</li>
+          <li><strong>Ziehen</strong> zum Verschieben</li>
+        </ol>
+        <button class="btn-dismiss" (click)="hideInstructions()">Verstanden</button>
+      </div>
+    </div>
+  }
+
+  <!-- Controls Panel -->
+  <div class="controls-panel">
+    <!-- GPS Button -->
+    <button
+      class="control-btn gps-btn"
+      (click)="locateMe()"
+      [disabled]="isLoading()"
+      title="Mein Standort">
+      @if (isLoading()) {
+        <span class="spinner"></span>
+      } @else {
+        📍
+      }
+    </button>
+
+    <!-- Use GPS as Start -->
+    <button
+      class="control-btn"
+      (click)="useGpsAsStart()"
+      [disabled]="isLoading()"
+      title="GPS als Startpunkt">
+      🎯
+    </button>
+
+    <!-- Fit to Route -->
+    @if (startPoint() && endPoint()) {
+      <button
+        class="control-btn"
+        (click)="fitToRoute()"
+        title="Route anzeigen">
+        🔍
+      </button>
+    }
+
+    <!-- Clear -->
+    @if (startPoint()) {
+      <button
+        class="control-btn clear-btn"
+        (click)="clearPoints()"
+        title="Zurücksetzen">
+        ✕
+      </button>
+    }
+  </div>
+
+  <!-- Info Panel -->
+  <div class="info-panel">
+    <!-- GPS Status -->
+    @if (gpsPosition()) {
+      <div class="info-item gps-status" [class.good]="isAccuracyGood()" [class.poor]="!isAccuracyGood()">
+        <span class="label">GPS</span>
+        <span class="value">{{ formatAccuracy() }}</span>
+      </div>
+    }
+
+    <!-- GPS Error -->
+    @if (gpsError()) {
+      <div class="info-item error">
+        <span class="value">{{ gpsError() }}</span>
+      </div>
+    }
+
+    <!-- Start Point -->
+    @if (startPoint(); as start) {
+      <div class="info-item">
+        <span class="label">Start</span>
+        <span class="value">{{ start.lat.toFixed(5) }}, {{ start.lng.toFixed(5) }}</span>
+      </div>
+    }
+
+    <!-- End Point -->
+    @if (endPoint(); as end) {
+      <div class="info-item">
+        <span class="label">Ende</span>
+        <span class="value">{{ end.lat.toFixed(5) }}, {{ end.lng.toFixed(5) }}</span>
+      </div>
+    }
+
+    <!-- Distance & Azimuth -->
+    @if (startPoint() && endPoint()) {
+      <div class="route-info">
+        <div class="info-item">
+          <span class="label">Distanz</span>
+          <span class="value highlight">{{ getDistanceFormatted() }}</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Azimut</span>
+          <span class="value highlight">{{ azimuth() }}° {{ getAzimuthDirection() }}</span>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Help Text -->
+  @if (!startPoint()) {
+    <div class="help-text">
+      Tippen Sie auf die Karte, um den <strong>Startpunkt</strong> zu setzen
+    </div>
+  } @else if (!endPoint()) {
+    <div class="help-text">
+      Tippen Sie auf die Karte, um den <strong>Endpunkt</strong> zu setzen
+    </div>
+  }
+</div>

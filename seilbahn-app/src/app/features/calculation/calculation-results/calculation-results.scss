@@ -1,0 +1,485 @@
+@import '../../../../styles/variables';
+@import '../../../../styles/breakpoints';
+
+.calculation-container {
+  padding: $spacing-md;
+}
+
+// Trigger Section
+.trigger-section {
+  margin-bottom: $spacing-lg;
+  text-align: center;
+}
+
+.cannot-calculate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  padding: $spacing-md;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: $border-radius-md;
+  color: #856404;
+  margin-bottom: $spacing-md;
+
+  .warning-icon {
+    font-size: 18px;
+  }
+}
+
+.btn-calculate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  padding: $spacing-md $spacing-lg;
+  background: $primary-color;
+  color: white;
+  border: none;
+  border-radius: $border-radius-lg;
+  font-size: $font-size-lg;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all $transition-fast;
+  min-height: 56px;
+
+  &:hover:not(:disabled) {
+    background: darken($primary-color, 10%);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.calculating {
+    background: $gray-400;
+  }
+
+  .calc-icon {
+    font-size: 20px;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid white;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.last-calc-time {
+  margin-top: $spacing-sm;
+  font-size: $font-size-sm;
+  color: $gray-500;
+}
+
+// Results Section
+.results-section {
+  background: white;
+  border-radius: $border-radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-sm;
+
+  &.invalid {
+    border: 2px solid $error-color;
+  }
+}
+
+// Status Header
+.status-header {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-md;
+  border-radius: $border-radius-md;
+  margin-bottom: $spacing-lg;
+
+  &.success {
+    background: #e8f5e9;
+    color: $success-color;
+  }
+
+  &.error {
+    background: #ffebee;
+    color: $error-color;
+  }
+
+  .status-icon {
+    font-size: 24px;
+    font-weight: bold;
+  }
+
+  .status-text {
+    font-size: $font-size-lg;
+    font-weight: 600;
+  }
+}
+
+// Message Boxes
+.message-box {
+  padding: $spacing-md;
+  border-radius: $border-radius-md;
+  margin-bottom: $spacing-md;
+
+  h4 {
+    margin: 0 0 $spacing-sm 0;
+    font-size: $font-size-base;
+    font-weight: 600;
+  }
+
+  p {
+    margin: $spacing-xs 0;
+    font-size: $font-size-sm;
+  }
+
+  &.error {
+    background: #ffebee;
+    border-left: 4px solid $error-color;
+    color: darken($error-color, 20%);
+  }
+
+  &.warning {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    color: #856404;
+  }
+
+  &.info {
+    background: #e3f2fd;
+    border-left: 4px solid $info-color;
+    color: darken($info-color, 20%);
+  }
+}
+
+// Main Results
+.main-results {
+  margin-bottom: $spacing-lg;
+}
+
+// Result Cards
+.result-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-sm;
+  margin-bottom: $spacing-lg;
+}
+
+.result-card {
+  background: $gray-50;
+  border-radius: $border-radius-md;
+  padding: $spacing-md;
+  text-align: center;
+
+  &.highlight {
+    background: #e8f5e9;
+    border: 2px solid $success-color;
+  }
+
+  .result-label {
+    display: block;
+    font-size: $font-size-sm;
+    color: $gray-600;
+    margin-bottom: $spacing-xs;
+  }
+
+  .result-value {
+    display: block;
+    font-size: $font-size-xl;
+    font-weight: 700;
+    color: $gray-900;
+  }
+
+  .result-unit {
+    display: block;
+    font-size: $font-size-sm;
+    color: $gray-500;
+  }
+}
+
+// Clearance Info
+.clearance-info {
+  background: $gray-50;
+  border-radius: $border-radius-md;
+  padding: $spacing-md;
+  margin-bottom: $spacing-lg;
+
+  &.warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+  }
+
+  h4 {
+    margin: 0 0 $spacing-sm 0;
+    font-size: $font-size-sm;
+    color: $gray-600;
+    font-weight: 500;
+  }
+
+  .clearance-value {
+    .value {
+      font-size: $font-size-xl;
+      font-weight: 700;
+      color: $gray-900;
+    }
+
+    .location {
+      display: block;
+      font-size: $font-size-sm;
+      color: $gray-500;
+      margin-top: $spacing-xs;
+    }
+  }
+}
+
+// Spans Section
+.spans-section {
+  h4 {
+    margin: 0 0 $spacing-md 0;
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $gray-700;
+  }
+}
+
+.spans-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.span-card {
+  background: $gray-50;
+  border-radius: $border-radius-sm;
+  padding: $spacing-md;
+  border-left: 3px solid $primary-color;
+
+  .span-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-sm;
+
+    .span-number {
+      font-weight: 600;
+      color: $primary-color;
+    }
+
+    .span-length {
+      font-size: $font-size-sm;
+      color: $gray-600;
+      background: white;
+      padding: 2px $spacing-sm;
+      border-radius: $border-radius-sm;
+    }
+  }
+
+  .span-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: $spacing-sm;
+
+    .detail-row {
+      text-align: center;
+
+      &.warning {
+        color: $warn-color;
+        font-weight: 600;
+      }
+
+      .detail-label {
+        display: block;
+        font-size: 11px;
+        color: $gray-500;
+      }
+
+      .detail-value {
+        display: block;
+        font-size: $font-size-sm;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+// Cable Capacity Check
+.capacity-check {
+  background: $gray-50;
+  border-radius: $border-radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-lg;
+  border: 2px solid $gray-200;
+
+  &.ok {
+    background: #e8f5e9;
+    border-color: $success-color;
+
+    .capacity-header {
+      color: $success-color;
+    }
+
+    .utilization-bar .bar-fill {
+      background: $success-color;
+    }
+  }
+
+  &.warning {
+    background: #fff3cd;
+    border-color: #ffc107;
+
+    .capacity-header {
+      color: #856404;
+    }
+
+    .utilization-bar .bar-fill {
+      background: #ffc107;
+    }
+  }
+
+  &.fail {
+    background: #ffebee;
+    border-color: $error-color;
+
+    .capacity-header {
+      color: $error-color;
+    }
+
+    .utilization-bar .bar-fill {
+      background: $error-color;
+    }
+  }
+
+  .capacity-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-md;
+
+    .status-icon {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .status-text {
+      font-size: $font-size-lg;
+      font-weight: 600;
+    }
+  }
+
+  .capacity-details {
+    margin-bottom: $spacing-md;
+
+    .capacity-row {
+      display: flex;
+      justify-content: space-between;
+      padding: $spacing-xs 0;
+      font-size: $font-size-sm;
+
+      .label {
+        color: $gray-600;
+      }
+
+      .value {
+        font-weight: 600;
+        color: $gray-900;
+
+        &.utilization {
+          font-size: $font-size-lg;
+        }
+      }
+
+      &.highlight {
+        background: rgba(255, 255, 255, 0.5);
+        margin: $spacing-xs -$spacing-sm;
+        padding: $spacing-sm;
+        border-radius: $border-radius-sm;
+
+        .value {
+          font-size: $font-size-xl;
+        }
+      }
+    }
+  }
+
+  .utilization-bar {
+    position: relative;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 6px;
+    overflow: visible;
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.3s ease;
+    }
+
+    .bar-markers {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100%;
+
+      .marker {
+        position: absolute;
+        top: -18px;
+        transform: translateX(-50%);
+        font-size: 10px;
+        color: $gray-500;
+
+        &::after {
+          content: '';
+          position: absolute;
+          top: 16px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 1px;
+          height: 14px;
+          background: $gray-400;
+        }
+      }
+    }
+  }
+}
+
+// No Result
+.no-result {
+  text-align: center;
+  padding: $spacing-xxl $spacing-md;
+  color: $gray-500;
+
+  p {
+    margin: 0;
+  }
+}
+
+// Responsive
+@include tablet {
+  .calculation-container {
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .btn-calculate {
+    max-width: 400px;
+  }
+
+  .span-card .span-details {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

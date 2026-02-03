@@ -1,0 +1,280 @@
+<div class="profile-chart-container">
+  <!-- Header with controls -->
+  <div class="chart-header">
+    <h3>Profil-Ansicht</h3>
+    <div class="chart-controls">
+      @if (isZoomed()) {
+        <button class="btn-reset-zoom" (click)="resetZoom()" title="Zoom zurücksetzen">
+          <span class="icon">⟲</span>
+          <span class="label">Reset</span>
+        </button>
+      }
+      <button class="btn-fullscreen" (click)="toggleFullscreen()" [title]="isFullscreen() ? 'Vollbild beenden' : 'Vollbild'">
+        @if (isFullscreen()) {
+          <span class="icon">⛶</span>
+          <span class="label">Beenden</span>
+        } @else {
+          <span class="icon">⛶</span>
+          <span class="label">Vollbild</span>
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- Chart Container -->
+  @if (hasData()) {
+    <!-- Simulation Controls -->
+    <div class="simulation-controls">
+      <div class="control-header">
+        <h4>Seilsimulation</h4>
+        <span class="control-hint">Interaktive Durchhang-Analyse</span>
+      </div>
+
+      <div class="controls-grid">
+        <!-- Horizontal Tension -->
+        <div class="control-group">
+          <label class="control-label">
+            <span class="label-text">Seilzug (H)</span>
+            <span class="label-value">{{ horizontalTension() }} kN</span>
+          </label>
+          <input
+            type="range"
+            class="slider"
+            [min]="minTension"
+            [max]="maxTension"
+            [value]="horizontalTension()"
+            (input)="onTensionChange($any($event.target).valueAsNumber)"
+          />
+          <div class="slider-labels">
+            <span>{{ minTension }} kN</span>
+            <span>{{ maxTension }} kN</span>
+          </div>
+        </div>
+
+        <!-- Point Load -->
+        <div class="control-group">
+          <label class="control-label">
+            <span class="label-text">Punktlast (P)</span>
+            <span class="label-value">{{ (pointLoad() / 1000).toFixed(1) }} kN</span>
+          </label>
+          <input
+            type="range"
+            class="slider"
+            [min]="minLoad"
+            [max]="maxLoad"
+            step="500"
+            [value]="pointLoad()"
+            (input)="onPointLoadChange($any($event.target).valueAsNumber)"
+          />
+          <div class="slider-labels">
+            <span>0 kN</span>
+            <span>{{ maxLoad / 1000 }} kN</span>
+          </div>
+        </div>
+
+        <!-- Load Position -->
+        <div class="control-group">
+          <label class="control-label">
+            <span class="label-text">Lastposition</span>
+            <span class="label-value">{{ loadPositionPercent() }}%</span>
+          </label>
+          <input
+            type="range"
+            class="slider"
+            min="5"
+            max="95"
+            [value]="loadPositionPercent()"
+            (input)="onLoadPositionChange($any($event.target).valueAsNumber)"
+          />
+          <div class="slider-labels">
+            <span>Anfang</span>
+            <span>Ende</span>
+          </div>
+        </div>
+
+        <!-- Cable Weight -->
+        <div class="control-group">
+          <label class="control-label">
+            <span class="label-text">Seilgewicht</span>
+            <span class="label-value">{{ (cableWeight() / 9.81).toFixed(1) }} kg/m</span>
+          </label>
+          <input
+            type="range"
+            class="slider"
+            min="5"
+            max="50"
+            [value]="cableWeight()"
+            (input)="onCableWeightChange($any($event.target).valueAsNumber)"
+          />
+          <div class="slider-labels">
+            <span>0.5 kg/m</span>
+            <span>5 kg/m</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toggle Buttons -->
+      <div class="toggle-buttons">
+        <button
+          class="toggle-btn"
+          [class.active]="showEmptyCable()"
+          (click)="toggleEmptyCable()"
+        >
+          <span class="toggle-color empty"></span>
+          <span>Leerseil</span>
+        </button>
+        <button
+          class="toggle-btn"
+          [class.active]="showLoadedCable()"
+          (click)="toggleLoadedCable()"
+        >
+          <span class="toggle-color loaded"></span>
+          <span>Belastet</span>
+        </button>
+        <button
+          class="toggle-btn"
+          [class.active]="showCriticalPoint()"
+          (click)="toggleCriticalPoint()"
+        >
+          <span class="toggle-color critical"></span>
+          <span>Kritisch</span>
+        </button>
+        <button
+          class="toggle-btn"
+          [class.active]="showAnchorForces()"
+          (click)="toggleAnchorForces()"
+        >
+          <span class="toggle-color anchor"></span>
+          <span>Ankerkräfte</span>
+        </button>
+      </div>
+
+      <!-- Critical Info -->
+      @if (criticalPoint() && showCriticalPoint()) {
+        <div class="critical-info" [class.warning]="criticalPoint()!.clearance < 2">
+          <span class="critical-icon">⚠</span>
+          <div class="critical-details">
+            <span class="critical-label">Min. Bodenfreiheit:</span>
+            <span class="critical-value">{{ criticalPoint()!.clearance.toFixed(2) }} m</span>
+            <span class="critical-location">bei Station {{ criticalPoint()!.x.toFixed(1) }} m</span>
+          </div>
+        </div>
+      }
+
+      <!-- Anchor Forces Info -->
+      @if (showAnchorForces() && (startAnchor() || endAnchor())) {
+        <div class="anchor-forces-container">
+          <h5 class="anchor-forces-title">⚓ Ankerkräfte</h5>
+          <div class="anchor-forces-grid">
+            @if (startAnchor()) {
+              <div class="anchor-force-card">
+                <div class="anchor-force-header">
+                  <span class="anchor-icon">🏔️</span>
+                  <span class="anchor-name">Tal-Anker</span>
+                </div>
+                <div class="anchor-force-values">
+                  <div class="force-row">
+                    <span class="force-label">Horizontal (H):</span>
+                    <span class="force-value">{{ startAnchor()!.forces.horizontal.toFixed(1) }} kN</span>
+                  </div>
+                  <div class="force-row">
+                    <span class="force-label">Vertikal ({{ showLoadedCable() ? 'belastet' : 'leer' }}):</span>
+                    <span class="force-value">{{ (showLoadedCable() ? startAnchor()!.forces.verticalLoaded : startAnchor()!.forces.verticalEmpty).toFixed(1) }} kN</span>
+                  </div>
+                  <div class="force-row highlight">
+                    <span class="force-label">Resultierend:</span>
+                    <span class="force-value">{{ (showLoadedCable() ? startAnchor()!.forces.resultantLoaded : startAnchor()!.forces.resultantEmpty).toFixed(1) }} kN</span>
+                  </div>
+                  <div class="force-row">
+                    <span class="force-label">Winkel:</span>
+                    <span class="force-value">{{ (showLoadedCable() ? startAnchor()!.forces.angleLoaded : startAnchor()!.forces.angleEmpty).toFixed(1) }}°</span>
+                  </div>
+                </div>
+              </div>
+            }
+            @if (endAnchor()) {
+              <div class="anchor-force-card">
+                <div class="anchor-force-header">
+                  <span class="anchor-icon">⛰️</span>
+                  <span class="anchor-name">Berg-Anker</span>
+                </div>
+                <div class="anchor-force-values">
+                  <div class="force-row">
+                    <span class="force-label">Horizontal (H):</span>
+                    <span class="force-value">{{ endAnchor()!.forces.horizontal.toFixed(1) }} kN</span>
+                  </div>
+                  <div class="force-row">
+                    <span class="force-label">Vertikal ({{ showLoadedCable() ? 'belastet' : 'leer' }}):</span>
+                    <span class="force-value">{{ (showLoadedCable() ? endAnchor()!.forces.verticalLoaded : endAnchor()!.forces.verticalEmpty).toFixed(1) }} kN</span>
+                  </div>
+                  <div class="force-row highlight">
+                    <span class="force-label">Resultierend:</span>
+                    <span class="force-value">{{ (showLoadedCable() ? endAnchor()!.forces.resultantLoaded : endAnchor()!.forces.resultantEmpty).toFixed(1) }} kN</span>
+                  </div>
+                  <div class="force-row">
+                    <span class="force-label">Winkel:</span>
+                    <span class="force-value">{{ (showLoadedCable() ? endAnchor()!.forces.angleLoaded : endAnchor()!.forces.angleEmpty).toFixed(1) }}°</span>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <div #chartContainer class="chart-wrapper">
+      <!-- D3 SVG will be inserted here -->
+    </div>
+
+    <!-- Legend -->
+    <div class="chart-legend">
+      <div class="legend-item">
+        <span class="legend-color terrain"></span>
+        <span class="legend-label">Gelände</span>
+      </div>
+      @if (showEmptyCable()) {
+        <div class="legend-item">
+          <span class="legend-color empty-cable"></span>
+          <span class="legend-label">Leerseil</span>
+        </div>
+      }
+      @if (showLoadedCable()) {
+        <div class="legend-item">
+          <span class="legend-color loaded-cable"></span>
+          <span class="legend-label">Mit Last</span>
+        </div>
+      }
+      <div class="legend-item">
+        <span class="legend-color support"></span>
+        <span class="legend-label">Stützen</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color anchor"></span>
+        <span class="legend-label">Ankerpunkte</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color clearance"></span>
+        <span class="legend-label">Min. Freiraum</span>
+      </div>
+      @if (showCriticalPoint() && criticalPoint()) {
+        <div class="legend-item">
+          <span class="legend-color critical"></span>
+          <span class="legend-label">Kritischer Punkt</span>
+        </div>
+      }
+    </div>
+
+    <!-- Touch hint -->
+    <div class="touch-hint">
+      <span>Pinch zum Zoomen • Wischen zum Verschieben</span>
+    </div>
+  } @else {
+    <!-- Empty State -->
+    <div class="empty-state">
+      <div class="empty-icon">📊</div>
+      <h4>Keine Daten vorhanden</h4>
+      <p>Erfassen Sie zuerst das Geländeprofil und platzieren Sie mindestens 2 Stützen</p>
+    </div>
+  }
+</div>

@@ -1,0 +1,106 @@
+[
+  {
+    "id": "preset-light-forest",
+    "name": "Leichtes Forstseil – 12mm",
+    "description": "Für leichte Holztransporte im Forstbetrieb, kurze bis mittlere Spannweiten",
+    "cable": {
+      "diameterMm": 12,
+      "breakingStrengthKN": 79,
+      "material": "steel"
+    },
+    "carrier": {
+      "wNPerM": 20,
+      "sagFM": 2.5,
+      "safetyFactor": 5,
+      "kCoeff": 1600
+    },
+    "load": {
+      "PN": 3000
+    },
+    "limits": {
+      "minClearanceM": 2.0,
+      "maxTmaxKN": 15
+    },
+    "isSystemPreset": true,
+    "createdAt": "2026-02-02T00:00:00.000Z",
+    "updatedAt": "2026-02-03T00:00:00.000Z"
+  },
+  {
+    "id": "preset-standard-material",
+    "name": "Standard Materialseilbahn – 16mm",
+    "description": "Standardkonfiguration für allgemeine Materialtransporte, mittlere Lasten und Spannweiten",
+    "cable": {
+      "diameterMm": 16,
+      "breakingStrengthKN": 141,
+      "material": "steel"
+    },
+    "carrier": {
+      "wNPerM": 35,
+      "sagFM": 3.0,
+      "safetyFactor": 5,
+      "kCoeff": 1600
+    },
+    "load": {
+      "PN": 5000
+    },
+    "limits": {
+      "minClearanceM": 2.5,
+      "maxTmaxKN": 28
+    },
+    "isSystemPreset": true,
+    "createdAt": "2026-02-02T00:00:00.000Z",
+    "updatedAt": "2026-02-03T00:00:00.000Z"
+  },
+  {
+    "id": "preset-heavy-construction",
+    "name": "Schwere Last – 20mm",
+    "description": "Für Baustellentransporte und schwere Lasten, große Spannweiten, verstärktes Tragseil",
+    "cable": {
+      "diameterMm": 20,
+      "breakingStrengthKN": 220,
+      "material": "steel"
+    },
+    "carrier": {
+      "wNPerM": 55,
+      "sagFM": 4.0,
+      "safetyFactor": 5,
+      "kCoeff": 1770
+    },
+    "load": {
+      "PN": 10000
+    },
+    "limits": {
+      "minClearanceM": 3.0,
+      "maxTmaxKN": 44
+    },
+    "isSystemPreset": true,
+    "createdAt": "2026-02-02T00:00:00.000Z",
+    "updatedAt": "2026-02-03T00:00:00.000Z"
+  },
+  {
+    "id": "preset-test-conservative",
+    "name": "Test/Simulation – 16mm konservativ",
+    "description": "Konservative Werte für Testzwecke und Vorabschätzungen, erhöhter Sicherheitsfaktor",
+    "cable": {
+      "diameterMm": 16,
+      "breakingStrengthKN": 141,
+      "material": "steel"
+    },
+    "carrier": {
+      "wNPerM": 40,
+      "sagFM": 3.5,
+      "safetyFactor": 6,
+      "kCoeff": 1600
+    },
+    "load": {
+      "PN": 6000
+    },
+    "limits": {
+      "minClearanceM": 3.0,
+      "maxTmaxKN": 23
+    },
+    "isSystemPreset": true,
+    "createdAt": "2026-02-02T00:00:00.000Z",
+    "updatedAt": "2026-02-03T00:00:00.000Z"
+  }
+]

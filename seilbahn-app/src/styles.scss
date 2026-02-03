@@ -1,0 +1,123 @@
+/**
+ * Global Styles (Mobile-First)
+ */
+@use 'sass:color';
+@import 'styles/variables';
+@import 'styles/breakpoints';
+@import 'styles/mobile';
+
+// Angular Material theme (will be configured)
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+// Global resets
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: $font-family-base;
+  font-size: $font-size-base;
+  line-height: 1.5;
+  color: $gray-900;
+  background-color: $gray-50;
+}
+
+// Typography
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 500;
+  line-height: 1.2;
+  margin-bottom: $spacing-md;
+}
+
+h1 {
+  font-size: 2rem;
+}
+h2 {
+  font-size: 1.75rem;
+}
+h3 {
+  font-size: 1.5rem;
+}
+
+p {
+  margin-bottom: $spacing-md;
+}
+
+// Links
+a {
+  color: $primary-color;
+  text-decoration: none;
+  transition: color $transition-fast;
+
+  &:hover {
+    color: color.adjust($primary-color, $lightness: -10%)
+  }
+}
+
+// Utility classes
+.container {
+  width: 100%;
+  padding: $spacing-md;
+  margin: 0 auto;
+
+  @include desktop {
+    max-width: 1200px;
+    padding: $spacing-lg;
+  }
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.mt-sm {
+  margin-top: $spacing-sm;
+}
+.mt-md {
+  margin-top: $spacing-md;
+}
+.mt-lg {
+  margin-top: $spacing-lg;
+}
+
+.mb-sm {
+  margin-bottom: $spacing-sm;
+}
+.mb-md {
+  margin-bottom: $spacing-md;
+}
+.mb-lg {
+  margin-bottom: $spacing-lg;
+}
+
+// Hide on mobile
+@include mobile {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+// Hide on desktop
+@include desktop {
+  .hide-desktop {
+    display: none !important;
+  }
+}

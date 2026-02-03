@@ -1,0 +1,152 @@
+@import '../../../../styles/variables';
+@import '../../../../styles/breakpoints';
+
+.project-create-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding-top: $spacing-lg;
+  padding-bottom: $spacing-xl;
+}
+
+.header {
+  margin-bottom: $spacing-xl;
+
+  h1 {
+    margin: 0;
+  }
+}
+
+.create-form {
+  background: white;
+  border-radius: $border-radius-md;
+  padding: $spacing-lg;
+  box-shadow: $shadow-sm;
+}
+
+.form-group {
+  margin-bottom: $spacing-lg;
+}
+
+.form-label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: $spacing-sm;
+  color: $gray-900;
+
+  .required {
+    color: $warn-color;
+  }
+
+  .optional {
+    color: $gray-600;
+    font-weight: 400;
+    font-size: $font-size-sm;
+  }
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: $spacing-md;
+  border: 2px solid $gray-300;
+  border-radius: $border-radius-sm;
+  font-size: $font-size-base;
+  font-family: $font-family-base;
+  transition: border-color $transition-fast;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+  }
+
+  &::placeholder {
+    color: $gray-400;
+  }
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-error {
+  color: $warn-color;
+  font-size: $font-size-sm;
+  margin-top: $spacing-xs;
+}
+
+.form-hint {
+  color: $gray-600;
+  font-size: $font-size-sm;
+  margin-top: $spacing-xs;
+}
+
+.form-actions {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-xl;
+
+  @include mobile {
+    flex-direction: column;
+
+    button {
+      width: 100%;
+    }
+  }
+}
+
+.btn-large {
+  padding: $spacing-md $spacing-lg;
+  border-radius: $border-radius-md;
+  font-size: $font-size-base;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all $transition-fast;
+  border: none;
+  min-height: $touch-target-comfortable;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  background-color: $primary-color;
+  color: white;
+  flex: 1;
+}
+
+.btn-secondary {
+  background-color: $gray-200;
+  color: $gray-900;
+}
+
+.info-box {
+  background: #e3f2fd;
+  border-left: 4px solid $info-color;
+  border-radius: $border-radius-sm;
+  padding: $spacing-md;
+  display: flex;
+  gap: $spacing-md;
+
+  .info-icon {
+    font-size: 24px;
+  }
+
+  .info-content {
+    h3 {
+      margin: 0 0 $spacing-sm 0;
+      font-size: $font-size-base;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: $spacing-lg;
+
+      li {
+        margin-bottom: $spacing-xs;
+      }
+    }
+  }
+}

@@ -1,0 +1,92 @@
+<div class="project-detail-container">
+  <!-- Header -->
+  <div class="project-header">
+    <button class="btn-back" (click)="goBack()">← Zurück</button>
+    @if (project()) {
+      <h1 class="project-title">{{ project()!.name }}</h1>
+    }
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="loading-state">
+      <p>Projekt wird geladen...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error()) {
+    <div class="error-state">
+      <p>{{ error() }}</p>
+      <button class="btn-primary" (click)="goBack()">Zurück zur Übersicht</button>
+    </div>
+  }
+
+  <!-- Project Content -->
+  @if (project() && !loading()) {
+    <div class="project-content">
+      <!-- Map Section -->
+      <section class="workflow-section map-section">
+        <div class="section-header">
+          <h2>Startpunkt festlegen</h2>
+          <p>Wählen Sie Start- und Endpunkt auf der Karte oder nutzen Sie GPS</p>
+        </div>
+        <app-map-container (pointsChanged)="onMapPointsChanged($event)"></app-map-container>
+      </section>
+
+      <!-- Terrain Input Section -->
+      <section class="workflow-section">
+        <div class="section-header">
+          <h2>Geländeprofil erfassen</h2>
+          <p>Erfassen Sie das Bodenprofil mit Laser-Messungen (Länge + Steigung %)</p>
+        </div>
+        <app-terrain-input></app-terrain-input>
+      </section>
+
+      <!-- Support Placement Section -->
+      <section class="workflow-section">
+        <div class="section-header">
+          <h2>Stützen platzieren</h2>
+          <p>Positionieren Sie die Stützen entlang der Strecke</p>
+        </div>
+        <app-support-placement></app-support-placement>
+      </section>
+
+      <!-- Cable Configuration Section -->
+      <section class="workflow-section">
+        <div class="section-header">
+          <h2>Seilparameter</h2>
+          <p>Wählen Sie ein Preset oder konfigurieren Sie die Seilparameter manuell</p>
+        </div>
+        <app-cable-config></app-cable-config>
+      </section>
+
+      <!-- Calculation Section -->
+      <section class="workflow-section">
+        <div class="section-header">
+          <h2>Berechnung</h2>
+          <p>Seilstatik berechnen und Ergebnisse anzeigen</p>
+        </div>
+        <app-calculation-results></app-calculation-results>
+      </section>
+
+      <!-- Profile Visualization Section -->
+      <section class="workflow-section visualization-section">
+        <div class="section-header">
+          <h2>Profil-Visualisierung</h2>
+          <p>Interaktive Darstellung von Gelände, Seil und Stützen</p>
+        </div>
+        <app-profile-chart></app-profile-chart>
+      </section>
+
+      <!-- Export Section -->
+      <section class="workflow-section">
+        <div class="section-header">
+          <h2>Export</h2>
+          <p>Projekt als PDF-Bericht, DXF-Zeichnung oder JSON-Daten exportieren</p>
+        </div>
+        <app-export-panel></app-export-panel>
+      </section>
+    </div>
+  }
+</div>

@@ -1,0 +1,28 @@
+<!-- Mobile-First App Shell -->
+<div class="app-container">
+  <!-- Header -->
+  <header class="app-header safe-top">
+    <div class="header-content">
+      <h1 class="app-title">{{ title }}</h1>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="app-main">
+    <router-outlet></router-outlet>
+  </main>
+
+  <!-- Bottom Navigation (Mobile) -->
+  <nav class="app-nav safe-bottom hide-desktop">
+    <div class="nav-items">
+      <a routerLink="/projects" class="nav-item">
+        <span class="nav-icon">📁</span>
+        <span class="nav-label">Projekte</span>
+      </a>
+      <a routerLink="/about" class="nav-item">
+        <span class="nav-icon">ℹ️</span>
+        <span class="nav-label">Info</span>
+      </a>
+    </div>
+  </nav>
+</div>

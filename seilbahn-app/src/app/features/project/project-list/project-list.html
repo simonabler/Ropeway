@@ -1,0 +1,77 @@
+<div class="project-list-container container">
+  <div class="header">
+    <h1>Meine Projekte</h1>
+    <button class="btn-large btn-primary" (click)="createNewProject()">
+      + Neues Projekt
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="loading">
+      <p>Projekte werden geladen...</p>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (!loading() && projects.length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">📁</div>
+      <h2>Keine Projekte vorhanden</h2>
+      <p>Erstellen Sie Ihr erstes Seilbahn-Projekt</p>
+      <button class="btn-large btn-primary mt-lg" (click)="createNewProject()">
+        Projekt erstellen
+      </button>
+    </div>
+  }
+
+  <!-- Project List -->
+  @if (!loading() && projects.length > 0) {
+    <div class="projects-grid">
+      @for (project of projects; track project.id) {
+        <div
+          class="project-card touch-target"
+          (click)="openProject(project.id)"
+        >
+          <div class="card-header">
+            <h3 class="project-name">{{ project.name }}</h3>
+            <span class="status-badge" [ngClass]="getStatusClass(project.status)">
+              {{ getStatusLabel(project.status) }}
+            </span>
+          </div>
+
+          <div class="card-body">
+            <div class="project-info">
+              @if (project.totalLength) {
+                <div class="info-item">
+                  <span class="label">Länge:</span>
+                  <span class="value">{{ project.totalLength | number:'1.0-0' }} m</span>
+                </div>
+              }
+              @if (project.maxTension) {
+                <div class="info-item">
+                  <span class="label">T<sub>max</sub>:</span>
+                  <span class="value">{{ project.maxTension | number:'1.1-1' }} kN</span>
+                </div>
+              }
+            </div>
+
+            <div class="project-dates">
+              <span class="date">Geändert: {{ project.modifiedAt | date:'short' }}</span>
+            </div>
+          </div>
+
+          <div class="card-actions">
+            <button
+              class="btn-delete"
+              (click)="deleteProject(project.id, $event)"
+              title="Löschen"
+            >
+              🗑️
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

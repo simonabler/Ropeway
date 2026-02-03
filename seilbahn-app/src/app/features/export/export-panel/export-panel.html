@@ -1,0 +1,66 @@
+<div class="export-panel">
+  <div class="export-buttons">
+    <!-- PDF Export -->
+    <button
+      class="export-btn pdf-btn"
+      (click)="exportPdf()"
+      [disabled]="isExporting() || !project()">
+      <span class="btn-icon">📄</span>
+      <span class="btn-content">
+        <span class="btn-title">PDF Bericht</span>
+        <span class="btn-desc">Mehrseitiger Projektbericht</span>
+      </span>
+    </button>
+
+    <!-- DXF Export -->
+    <button
+      class="export-btn dxf-btn"
+      (click)="exportDxf()"
+      [disabled]="isExporting() || !hasTerrainData()">
+      <span class="btn-icon">📐</span>
+      <span class="btn-content">
+        <span class="btn-title">DXF Profil</span>
+        <span class="btn-desc">CAD-kompatibles Längsprofil</span>
+      </span>
+    </button>
+
+    <!-- JSON Export -->
+    <button
+      class="export-btn json-btn"
+      (click)="exportJson()"
+      [disabled]="isExporting() || !project()">
+      <span class="btn-icon">📦</span>
+      <span class="btn-content">
+        <span class="btn-title">JSON Daten</span>
+        <span class="btn-desc">Projektdaten für Backup/Import</span>
+      </span>
+    </button>
+  </div>
+
+  <!-- Export Status -->
+  @if (exportStatus()) {
+    <div class="export-status" [class.success]="lastExportType()" [class.error]="exportStatus()?.includes('fehlgeschlagen')">
+      @if (isExporting()) {
+        <span class="spinner"></span>
+      }
+      <span>{{ exportStatus() }}</span>
+    </div>
+  }
+
+  <!-- Export Info -->
+  <div class="export-info">
+    <h4>Export-Hinweise</h4>
+    <ul>
+      <li><strong>PDF:</strong> Vollständiger Bericht mit allen Projektdaten, Berechnungen und Tabellen.</li>
+      <li><strong>DXF:</strong> Profil-Zeichnung für AutoCAD, QCAD und andere CAD-Software. Enthält Gelände, Seil und Stützen.</li>
+      <li><strong>JSON:</strong> Rohdaten zum Backup oder für den Import in ein anderes Gerät.</li>
+    </ul>
+  </div>
+
+  <!-- Requirements -->
+  @if (!hasTerrainData()) {
+    <div class="export-warning">
+      ⚠️ DXF-Export benötigt Geländeprofil-Daten
+    </div>
+  }
+</div>

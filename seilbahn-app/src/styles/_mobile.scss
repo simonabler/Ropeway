@@ -1,0 +1,73 @@
+/**
+ * Mobile-specific styles
+ */
+@import 'variables';
+@import 'breakpoints';
+
+// Global mobile optimizations
+* {
+  // Better touch scrolling on iOS
+  -webkit-overflow-scrolling: touch;
+
+  // Prevent text size adjustment on orientation change
+  -webkit-text-size-adjust: 100%;
+}
+
+// Touch target sizing
+.touch-target {
+  min-width: $touch-target-min;
+  min-height: $touch-target-min;
+  padding: $spacing-sm;
+}
+
+// Large buttons for mobile
+.btn-large {
+  min-height: $touch-target-comfortable;
+  padding: $spacing-md $spacing-lg;
+  font-size: $font-size-lg;
+  font-weight: 500;
+}
+
+// Mobile input styling
+input,
+select,
+textarea {
+  font-size: 16px; // Prevents zoom on iOS
+
+  @include desktop {
+    font-size: $font-size-base;
+  }
+}
+
+// Prevent double-tap zoom
+button,
+a {
+  touch-action: manipulation;
+}
+
+// Hide scrollbars on mobile (while keeping functionality)
+@include mobile {
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+// Safe area insets for notched devices
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+}

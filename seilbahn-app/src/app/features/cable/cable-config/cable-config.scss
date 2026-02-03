@@ -1,0 +1,614 @@
+@import '../../../../styles/variables';
+@import '../../../../styles/breakpoints';
+
+.cable-config-container {
+  padding: $spacing-md;
+}
+
+// Preset Section
+.preset-section {
+  margin-bottom: $spacing-lg;
+
+  h3 {
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $gray-700;
+    margin-bottom: $spacing-md;
+  }
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: $spacing-sm;
+}
+
+.preset-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: $spacing-md;
+  background: white;
+  border: 2px solid $gray-200;
+  border-radius: $border-radius-md;
+  cursor: pointer;
+  text-align: left;
+  transition: all $transition-fast;
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &.selected {
+    border-color: $primary-color;
+    background: #e8eaf6;
+  }
+
+  &.system {
+    border-left: 4px solid $info-color;
+  }
+
+  .preset-name {
+    font-weight: 600;
+    font-size: $font-size-base;
+    color: $gray-900;
+    margin-bottom: $spacing-xs;
+  }
+
+  .preset-desc {
+    font-size: $font-size-sm;
+    color: $gray-600;
+    margin-bottom: $spacing-sm;
+  }
+
+  .preset-values {
+    display: flex;
+    gap: $spacing-md;
+    font-size: $font-size-sm;
+    color: $gray-500;
+
+    span {
+      background: $gray-100;
+      padding: 2px $spacing-xs;
+      border-radius: $border-radius-sm;
+    }
+  }
+
+  .system-badge {
+    position: absolute;
+    top: $spacing-sm;
+    right: $spacing-sm;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: $info-color;
+    background: #e3f2fd;
+    padding: 2px $spacing-xs;
+    border-radius: $border-radius-sm;
+  }
+
+  .btn-delete-preset {
+    position: absolute;
+    top: $spacing-xs;
+    right: $spacing-xs;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: rgba($error-color, 0.1);
+    color: $error-color;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background: rgba($error-color, 0.2);
+    }
+  }
+
+  .preset-diameter {
+    background: $primary-color !important;
+    color: white !important;
+    font-weight: 600;
+  }
+}
+
+.no-presets {
+  text-align: center;
+  color: $gray-500;
+  padding: $spacing-lg;
+}
+
+// Modification Warning
+.modification-warning {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: $border-radius-md;
+  padding: $spacing-md;
+  margin-bottom: $spacing-lg;
+
+  .warning-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    font-weight: 600;
+    color: #856404;
+    margin-bottom: $spacing-sm;
+
+    .warning-icon {
+      font-size: 18px;
+    }
+  }
+
+  .modification-list {
+    margin-bottom: $spacing-md;
+  }
+
+  .mod-item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    font-size: $font-size-sm;
+    padding: $spacing-xs 0;
+
+    .mod-label {
+      color: $gray-700;
+      min-width: 120px;
+    }
+
+    .mod-current {
+      color: $error-color;
+      font-weight: 600;
+    }
+
+    .mod-arrow {
+      color: $gray-400;
+    }
+
+    .mod-preset {
+      color: $success-color;
+      font-weight: 600;
+    }
+  }
+
+  .btn-reset {
+    width: 100%;
+    height: 40px;
+    background: white;
+    border: 1px solid #856404;
+    border-radius: $border-radius-sm;
+    color: #856404;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:active {
+      background: #fff3cd;
+    }
+  }
+}
+
+// Current Config Display
+.current-config {
+  background: white;
+  border-radius: $border-radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-sm;
+  margin-bottom: $spacing-lg;
+
+  .config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+
+    h3 {
+      font-size: $font-size-base;
+      font-weight: 600;
+      color: $gray-700;
+      margin: 0;
+    }
+
+    .preset-tag {
+      font-size: $font-size-sm;
+      background: $primary-color;
+      color: white;
+      padding: $spacing-xs $spacing-sm;
+      border-radius: $border-radius-sm;
+    }
+  }
+
+  .config-summary {
+    background: $gray-50;
+    border-radius: $border-radius-md;
+    padding: $spacing-md;
+    margin-bottom: $spacing-md;
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: $spacing-xs 0;
+
+      .label {
+        color: $gray-600;
+      }
+
+      .value {
+        font-weight: 600;
+        color: $gray-900;
+      }
+
+      &.highlight {
+        background: rgba($primary-color, 0.1);
+        padding: $spacing-sm;
+        margin: -$spacing-xs (-$spacing-sm);
+        margin-bottom: $spacing-xs;
+        border-radius: $border-radius-sm;
+
+        .label, .value {
+          color: $primary-color;
+        }
+      }
+    }
+  }
+}
+
+// Manual Input Section
+.manual-input-section {
+  background: white;
+  border-radius: $border-radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-sm;
+
+  h3 {
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $gray-700;
+    margin-bottom: $spacing-lg;
+  }
+}
+
+.input-group {
+  margin-bottom: $spacing-lg;
+
+  label {
+    display: block;
+    font-weight: 500;
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+    font-size: $font-size-sm;
+  }
+
+  .hint {
+    display: block;
+    margin-top: $spacing-xs;
+    font-size: $font-size-sm;
+    color: $gray-500;
+  }
+}
+
+.numeric-input {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    height: $touch-target-min;
+    padding: $spacing-sm $spacing-md;
+    border: 2px solid $gray-300;
+    border-radius: $border-radius-md;
+    font-size: $font-size-lg;
+    text-align: center;
+    -moz-appearance: textfield;
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-color;
+    }
+  }
+
+  .btn-adjust {
+    min-width: $touch-target-min;
+    height: $touch-target-min;
+    border: 2px solid $gray-300;
+    background: white;
+    border-radius: $border-radius-md;
+    font-size: $font-size-sm;
+    font-weight: 600;
+    color: $gray-700;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:active {
+      background: $gray-100;
+      transform: scale(0.95);
+    }
+  }
+}
+
+// Error Box
+.error-box {
+  background: #ffebee;
+  border: 1px solid $error-color;
+  border-radius: $border-radius-md;
+  padding: $spacing-md;
+  margin-top: $spacing-md;
+
+  .error-text {
+    color: $error-color;
+    font-size: $font-size-sm;
+    margin: $spacing-xs 0;
+
+    &:first-child {
+      margin-top: 0;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+// Buttons
+.btn-secondary {
+  height: $touch-target-comfortable;
+  background: $gray-200;
+  border: none;
+  border-radius: $border-radius-md;
+  color: $gray-700;
+  font-size: $font-size-base;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:active {
+    background: $gray-300;
+  }
+
+  &.btn-full {
+    width: 100%;
+  }
+}
+
+// Diameter Selector
+.diameter-group {
+  .diameter-selector {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+
+    .diameter-dropdown {
+      height: $touch-target-min;
+      padding: $spacing-sm $spacing-md;
+      border: 2px solid $gray-300;
+      border-radius: $border-radius-md;
+      font-size: $font-size-base;
+      background: white;
+      cursor: pointer;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-color;
+      }
+    }
+  }
+
+  .numeric-input.compact {
+    input {
+      max-width: 80px;
+    }
+  }
+}
+
+// Material Selector
+.material-selector {
+  display: flex;
+  gap: $spacing-sm;
+
+  .material-btn {
+    flex: 1;
+    height: $touch-target-min;
+    border: 2px solid $gray-300;
+    background: white;
+    border-radius: $border-radius-md;
+    font-size: $font-size-base;
+    font-weight: 500;
+    color: $gray-700;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &.selected {
+      border-color: $primary-color;
+      background: rgba($primary-color, 0.1);
+      color: $primary-color;
+    }
+  }
+}
+
+// Save Preset Button
+.btn-save-preset {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  width: 100%;
+  height: $touch-target-comfortable;
+  margin-top: $spacing-lg;
+  background: $success-color;
+  border: none;
+  border-radius: $border-radius-md;
+  color: white;
+  font-size: $font-size-base;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  .icon {
+    font-size: 18px;
+  }
+
+  &:active {
+    background: darken($success-color, 10%);
+    transform: scale(0.98);
+  }
+}
+
+// Dialog Overlay
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: $spacing-md;
+}
+
+.dialog-content {
+  background: white;
+  border-radius: $border-radius-lg;
+  padding: $spacing-lg;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: $shadow-lg;
+
+  h3 {
+    font-size: $font-size-lg;
+    font-weight: 600;
+    color: $gray-900;
+    margin: 0 0 $spacing-sm 0;
+  }
+
+  p {
+    font-size: $font-size-sm;
+    color: $gray-600;
+    margin: 0 0 $spacing-lg 0;
+  }
+}
+
+.dialog-form {
+  margin-bottom: $spacing-lg;
+
+  label {
+    display: block;
+    font-weight: 500;
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+    font-size: $font-size-sm;
+  }
+
+  input {
+    width: 100%;
+    height: $touch-target-min;
+    padding: $spacing-sm $spacing-md;
+    border: 2px solid $gray-300;
+    border-radius: $border-radius-md;
+    font-size: $font-size-base;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-color;
+    }
+
+    &:disabled {
+      background: $gray-100;
+      color: $gray-500;
+    }
+  }
+}
+
+.dialog-actions {
+  display: flex;
+  gap: $spacing-sm;
+
+  button {
+    flex: 1;
+    height: $touch-target-min;
+    border-radius: $border-radius-md;
+    font-size: $font-size-base;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all $transition-fast;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-xs;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .btn-cancel {
+    background: $gray-200;
+    border: none;
+    color: $gray-700;
+
+    &:active:not(:disabled) {
+      background: $gray-300;
+    }
+  }
+
+  .btn-save {
+    background: $primary-color;
+    border: none;
+    color: white;
+
+    &:active:not(:disabled) {
+      background: darken($primary-color, 10%);
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Responsive
+@include tablet {
+  .cable-config-container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .preset-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .numeric-input {
+    .btn-adjust {
+      min-width: 50px;
+    }
+  }
+}

@@ -1,0 +1,366 @@
+@use 'sass:color';
+@import '../../../../styles/variables';
+@import '../../../../styles/breakpoints';
+
+.terrain-input-container {
+  padding: $spacing-md;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+// Summary Bar
+.summary-bar {
+  display: flex;
+  justify-content: space-around;
+  background: white;
+  border-radius: $border-radius-md;
+  padding: $spacing-md;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-sm;
+
+  .summary-item {
+    text-align: center;
+
+    .label {
+      display: block;
+      font-size: $font-size-sm;
+      color: $gray-600;
+      margin-bottom: $spacing-xs;
+    }
+
+    .value {
+      display: block;
+      font-size: $font-size-xl;
+      font-weight: 600;
+      color: $primary-color;
+    }
+  }
+}
+
+// Input Card
+.input-card {
+  background: white;
+  border-radius: $border-radius-md;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-md;
+  box-shadow: $shadow-sm;
+  border: 2px solid transparent;
+  transition: all $transition-fast;
+
+  &.editing {
+    border-color: $accent-color;
+    background: #fff8e1;
+  }
+
+  h3 {
+    margin: 0 0 $spacing-md 0;
+    font-size: $font-size-lg;
+  }
+}
+
+.input-group {
+  margin-bottom: $spacing-lg;
+}
+
+.input-label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: $spacing-sm;
+  color: $gray-900;
+
+  .optional {
+    color: $gray-600;
+    font-weight: 400;
+    font-size: $font-size-sm;
+  }
+}
+
+// Numeric Input with +/- buttons
+.numeric-input {
+  display: flex;
+  gap: $spacing-xs;
+  align-items: stretch;
+
+  input.numeric-value {
+    flex: 1;
+    text-align: center;
+    font-size: $font-size-xl;
+    font-weight: 600;
+    padding: $spacing-md;
+    border: 2px solid $gray-300;
+    border-radius: $border-radius-sm;
+    min-height: $touch-target-comfortable;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-color;
+    }
+  }
+
+  button {
+    min-width: $touch-target-min;
+    min-height: $touch-target-comfortable;
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-lg;
+    font-weight: 600;
+    border: none;
+    border-radius: $border-radius-sm;
+    cursor: pointer;
+    transition: all $transition-fast;
+    user-select: none;
+  }
+
+  .btn-decrement {
+    background: $gray-200;
+    color: $gray-900;
+
+    &:active {
+      background: $gray-300;
+      transform: scale(0.95);
+    }
+  }
+
+  .btn-increment {
+    background: $primary-color;
+    color: white;
+
+    &:active {
+      background:  color.adjust($primary-color, $lightness: 10%);
+      transform: scale(0.95);
+    }
+  }
+}
+
+.text-input {
+  width: 100%;
+  padding: $spacing-md;
+  border: 2px solid $gray-300;
+  border-radius: $border-radius-sm;
+  font-size: $font-size-base;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+  }
+}
+
+.input-error {
+  color: $warn-color;
+  font-size: $font-size-sm;
+  margin-top: $spacing-xs;
+}
+
+.input-hint {
+  color: $gray-600;
+  font-size: $font-size-sm;
+  margin-top: $spacing-xs;
+}
+
+// Action Buttons
+.action-buttons {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-lg;
+
+  .btn-large {
+    flex: 1;
+    padding: $spacing-md;
+    font-size: $font-size-lg;
+    font-weight: 600;
+    border: none;
+    border-radius: $border-radius-md;
+    cursor: pointer;
+    min-height: $touch-target-comfortable;
+    transition: all $transition-fast;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &:not(:disabled):active {
+      transform: scale(0.98);
+    }
+  }
+
+  .btn-primary {
+    background: $success-color;
+    color: white;
+  }
+
+  .btn-secondary {
+    background: $gray-200;
+    color: $gray-900;
+  }
+}
+
+// Segment List
+.segment-list {
+  margin-top: $spacing-lg;
+
+  h3 {
+    margin-bottom: $spacing-md;
+    font-size: $font-size-lg;
+  }
+}
+
+.segments {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.segment-card {
+  background: white;
+  border-radius: $border-radius-sm;
+  padding: $spacing-md;
+  box-shadow: $shadow-sm;
+  transition: all $transition-fast;
+  border: 2px solid transparent;
+
+  &.highlight {
+    animation: highlight 1s ease-out;
+    border-color: $success-color;
+  }
+
+  &.editing {
+    border-color: $accent-color;
+    background: #fff8e1;
+  }
+}
+
+@keyframes highlight {
+  0% {
+    background: rgba($success-color, 0.2);
+  }
+  100% {
+    background: white;
+  }
+}
+
+.segment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+
+  .segment-number {
+    font-weight: 600;
+    font-size: $font-size-lg;
+    color: $primary-color;
+  }
+
+  .segment-actions {
+    display: flex;
+    gap: $spacing-xs;
+  }
+
+  .btn-edit {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: $gray-100;
+    border-radius: $border-radius-sm;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all $transition-fast;
+
+    &:active {
+      transform: scale(0.9);
+      background: #e3f2fd;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
+  .btn-remove {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: $warn-color;
+    cursor: pointer;
+    padding: $spacing-xs;
+    min-width: $touch-target-min;
+    min-height: $touch-target-min;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $border-radius-sm;
+
+    &:active {
+      background: rgba($warn-color, 0.1);
+    }
+  }
+}
+
+.segment-body {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.segment-info,
+.segment-cumulative {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.info-row {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  font-size: $font-size-sm;
+
+  .info-label {
+    color: $gray-600;
+  }
+
+  .info-value {
+    font-weight: 500;
+    color: $gray-900;
+
+    &.positive {
+      color: $success-color;
+    }
+
+    &.negative {
+      color: $warn-color;
+    }
+  }
+}
+
+.segment-notes {
+  font-size: $font-size-sm;
+  color: $gray-700;
+  font-style: italic;
+  padding-top: $spacing-xs;
+  border-top: 1px solid $gray-200;
+}
+
+// Empty State
+.empty-state {
+  text-align: center;
+  padding: $spacing-xxl;
+  color: $gray-600;
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: $spacing-md;
+    opacity: 0.5;
+  }
+
+  h3 {
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+  }
+
+  p {
+    color: $gray-600;
+  }
+}

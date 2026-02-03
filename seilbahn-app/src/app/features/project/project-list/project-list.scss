@@ -1,0 +1,205 @@
+@use 'sass:color';
+@import '../../../../styles/variables';
+@import '../../../../styles/breakpoints';
+
+.project-list-container {
+  padding-top: $spacing-lg;
+  padding-bottom: $spacing-xl;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-xl;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+
+  h1 {
+    margin: 0;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .btn-large {
+    white-space: nowrap;
+  }
+}
+
+.loading {
+  text-align: center;
+  padding: $spacing-xxl;
+  color: $gray-600;
+}
+
+.empty-state {
+  text-align: center;
+  padding: $spacing-xxl;
+
+  .empty-icon {
+    font-size: 64px;
+    margin-bottom: $spacing-lg;
+    opacity: 0.5;
+  }
+
+  h2 {
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+  }
+
+  p {
+    color: $gray-600;
+    margin-bottom: $spacing-lg;
+  }
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: $spacing-md;
+
+  @include tablet {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include desktop {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.project-card {
+  background: white;
+  border-radius: $border-radius-md;
+  box-shadow: $shadow-sm;
+  padding: $spacing-md;
+  cursor: pointer;
+  transition: all $transition-fast;
+  position: relative;
+
+  &:hover {
+    box-shadow: $shadow-md;
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-md;
+  gap: $spacing-sm;
+
+  .project-name {
+    margin: 0;
+    font-size: $font-size-lg;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .status-badge {
+    font-size: $font-size-sm;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $border-radius-sm;
+    font-weight: 500;
+    white-space: nowrap;
+
+    &.status-draft {
+      background-color: $gray-200;
+      color: $gray-700;
+    }
+
+    &.status-calculated {
+      background-color: #e3f2fd;
+      color: #1976d2;
+    }
+
+    &.status-exported {
+      background-color: #e8f5e9;
+      color: #388e3c;
+    }
+  }
+}
+
+.card-body {
+  margin-bottom: $spacing-md;
+}
+
+.project-info {
+  display: flex;
+  gap: $spacing-md;
+  margin-bottom: $spacing-sm;
+
+  .info-item {
+    display: flex;
+    gap: $spacing-xs;
+    font-size: $font-size-sm;
+
+    .label {
+      color: $gray-600;
+    }
+
+    .value {
+      font-weight: 500;
+      color: $gray-900;
+    }
+  }
+}
+
+.project-dates {
+  .date {
+    font-size: $font-size-sm;
+    color: $gray-600;
+  }
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-sm;
+
+  .btn-delete {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: $spacing-xs;
+    min-width: $touch-target-min;
+    min-height: $touch-target-min;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $border-radius-sm;
+    transition: background-color $transition-fast;
+
+    &:hover {
+      background-color: $gray-100;
+    }
+
+    &:active {
+      background-color: $gray-200;
+    }
+  }
+}
+
+.btn-primary {
+  background-color: $primary-color;
+  color: white;
+  border: none;
+  border-radius: $border-radius-md;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover {
+    background-color: color.adjust($primary-color, $lightness: -10%);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}

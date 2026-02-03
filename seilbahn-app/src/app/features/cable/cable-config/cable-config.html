@@ -1,0 +1,316 @@
+<div class="cable-config-container">
+  <!-- Preset Selection -->
+  <div class="preset-section">
+    <h3>Seil-Preset wählen</h3>
+    <div class="preset-grid">
+      @for (preset of presets(); track preset.id) {
+        <button
+          class="preset-card"
+          [class.selected]="selectedPresetId() === preset.id"
+          [class.system]="preset.isSystemPreset"
+          (click)="applyPreset(preset.id)"
+        >
+          <span class="preset-name">{{ preset.name }}</span>
+          @if (preset.description) {
+            <span class="preset-desc">{{ preset.description }}</span>
+          }
+          <div class="preset-values">
+            <span class="preset-diameter">{{ preset.cable.diameterMm }}mm</span>
+            <span>{{ preset.carrier.wNPerM }} N/m</span>
+            <span>{{ preset.load.PN / 1000 }} kN</span>
+          </div>
+          @if (preset.isSystemPreset) {
+            <span class="system-badge">System</span>
+          } @else {
+            <button class="btn-delete-preset" (click)="deletePreset(preset.id); $event.stopPropagation()" title="Löschen">×</button>
+          }
+        </button>
+      }
+    </div>
+
+    @if (presets().length === 0) {
+      <p class="no-presets">Keine Presets verfügbar</p>
+    }
+  </div>
+
+  <!-- Modification Warning -->
+  @if (isModified()) {
+    <div class="modification-warning">
+      <div class="warning-header">
+        <span class="warning-icon">⚠</span>
+        <span>Werte vom Preset abweichend</span>
+      </div>
+      <div class="modification-list">
+        @for (mod of modifications(); track mod.field) {
+          <div class="mod-item">
+            <span class="mod-label">{{ mod.label }}:</span>
+            <span class="mod-current">{{ mod.current.toFixed(1) }}</span>
+            <span class="mod-arrow">→</span>
+            <span class="mod-preset">{{ mod.preset.toFixed(1) }}</span>
+          </div>
+        }
+      </div>
+      <button class="btn-reset" (click)="resetToPreset()">Auf Preset zurücksetzen</button>
+    </div>
+  }
+
+  <!-- Current Config Display -->
+  @if (selectedPresetId() && !isManualMode()) {
+    <div class="current-config">
+      <div class="config-header">
+        <h3>Aktive Konfiguration</h3>
+        <span class="preset-tag">{{ getSelectedPresetName() }}</span>
+      </div>
+
+      <div class="config-summary">
+        <div class="summary-row highlight">
+          <span class="label">Seildurchmesser:</span>
+          <span class="value">{{ cableDiameterMm }} mm ({{ cableMaterial === 'steel' ? 'Stahl' : 'Kunststoff' }})</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">Seilgewicht:</span>
+          <span class="value">{{ cableWeightNPerM.toFixed(1) }} N/m</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">Durchhang:</span>
+          <span class="value">{{ sagMeters.toFixed(1) }} m</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">Sicherheitsfaktor:</span>
+          <span class="value">{{ safetyFactor }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">Nutzlast:</span>
+          <span class="value">{{ (loadN / 1000).toFixed(1) }} kN</span>
+        </div>
+        <div class="summary-row">
+          <span class="label">Min. Bodenfreiheit:</span>
+          <span class="value">{{ minClearanceM.toFixed(1) }} m</span>
+        </div>
+      </div>
+
+      <button class="btn-secondary btn-full" (click)="enableManualMode()">
+        Werte manuell anpassen
+      </button>
+    </div>
+  }
+
+  <!-- Manual Input Mode -->
+  @if (isManualMode() || !selectedPresetId()) {
+    <div class="manual-input-section">
+      <h3>Seilparameter</h3>
+
+      <!-- Cable Diameter (NEW) -->
+      <div class="input-group diameter-group">
+        <label>Seildurchmesser [mm]</label>
+        <div class="diameter-selector">
+          <select
+            [(ngModel)]="cableDiameterMm"
+            (ngModelChange)="onValueChange()"
+            class="diameter-dropdown"
+          >
+            @for (cable of standardCables; track cable.diameterMm) {
+              <option [value]="cable.diameterMm">
+                {{ cable.diameterMm }}mm - {{ cable.description }}
+              </option>
+            }
+          </select>
+          <div class="numeric-input compact">
+            <button class="btn-adjust" (click)="incrementDiameter(-2)">-2</button>
+            <input
+              type="number"
+              [(ngModel)]="cableDiameterMm"
+              (ngModelChange)="onValueChange()"
+              inputmode="numeric"
+              min="8"
+              max="40"
+              step="2"
+            />
+            <button class="btn-adjust" (click)="incrementDiameter(2)">+2</button>
+          </div>
+        </div>
+        @if (getSelectedCableInfo(); as cableInfo) {
+          <span class="hint">Bruchlast: ~{{ cableInfo.breakingStrength }} kN</span>
+        }
+      </div>
+
+      <!-- Material Type (NEW) -->
+      <div class="input-group">
+        <label>Material</label>
+        <div class="material-selector">
+          <button
+            class="material-btn"
+            [class.selected]="cableMaterial === 'steel'"
+            (click)="selectMaterial('steel')"
+          >
+            Stahl
+          </button>
+          <button
+            class="material-btn"
+            [class.selected]="cableMaterial === 'synthetic'"
+            (click)="selectMaterial('synthetic')"
+          >
+            Kunststoff
+          </button>
+        </div>
+      </div>
+
+      <!-- Cable Weight -->
+      <div class="input-group">
+        <label>Seilgewicht [N/m]</label>
+        <div class="numeric-input">
+          <button class="btn-adjust" (click)="incrementWeight(-5)">-5</button>
+          <button class="btn-adjust" (click)="incrementWeight(-1)">-1</button>
+          <input
+            type="number"
+            [(ngModel)]="cableWeightNPerM"
+            (ngModelChange)="onValueChange()"
+            inputmode="decimal"
+            min="5"
+            max="200"
+          />
+          <button class="btn-adjust" (click)="incrementWeight(1)">+1</button>
+          <button class="btn-adjust" (click)="incrementWeight(5)">+5</button>
+        </div>
+      </div>
+
+      <!-- Sag -->
+      <div class="input-group">
+        <label>Durchhang [m]</label>
+        <div class="numeric-input">
+          <button class="btn-adjust" (click)="incrementSag(-0.5)">-0.5</button>
+          <button class="btn-adjust" (click)="incrementSag(-0.1)">-0.1</button>
+          <input
+            type="number"
+            [(ngModel)]="sagMeters"
+            (ngModelChange)="onValueChange()"
+            inputmode="decimal"
+            min="0.5"
+            max="20"
+            step="0.1"
+          />
+          <button class="btn-adjust" (click)="incrementSag(0.1)">+0.1</button>
+          <button class="btn-adjust" (click)="incrementSag(0.5)">+0.5</button>
+        </div>
+      </div>
+
+      <!-- Safety Factor -->
+      <div class="input-group">
+        <label>Sicherheitsfaktor</label>
+        <div class="numeric-input">
+          <button class="btn-adjust" (click)="incrementSafety(-0.5)">-0.5</button>
+          <input
+            type="number"
+            [(ngModel)]="safetyFactor"
+            (ngModelChange)="onValueChange()"
+            inputmode="decimal"
+            min="2"
+            max="10"
+            step="0.5"
+          />
+          <button class="btn-adjust" (click)="incrementSafety(0.5)">+0.5</button>
+        </div>
+      </div>
+
+      <!-- Load -->
+      <div class="input-group">
+        <label>Nutzlast [N]</label>
+        <div class="numeric-input">
+          <button class="btn-adjust" (click)="incrementLoad(-500)">-500</button>
+          <button class="btn-adjust" (click)="incrementLoad(-100)">-100</button>
+          <input
+            type="number"
+            [(ngModel)]="loadN"
+            (ngModelChange)="onValueChange()"
+            inputmode="decimal"
+            min="500"
+            max="50000"
+          />
+          <button class="btn-adjust" (click)="incrementLoad(100)">+100</button>
+          <button class="btn-adjust" (click)="incrementLoad(500)">+500</button>
+        </div>
+        <span class="hint">{{ (loadN / 1000).toFixed(1) }} kN = {{ (loadN / 9.81).toFixed(0) }} kg</span>
+      </div>
+
+      <!-- Min Clearance -->
+      <div class="input-group">
+        <label>Min. Bodenfreiheit [m]</label>
+        <div class="numeric-input">
+          <button class="btn-adjust" (click)="incrementClearance(-0.5)">-0.5</button>
+          <input
+            type="number"
+            [(ngModel)]="minClearanceM"
+            (ngModelChange)="onValueChange()"
+            inputmode="decimal"
+            min="1"
+            max="10"
+            step="0.5"
+          />
+          <button class="btn-adjust" (click)="incrementClearance(0.5)">+0.5</button>
+        </div>
+      </div>
+
+      <!-- Errors -->
+      @if (errors().length > 0) {
+        <div class="error-box">
+          @for (err of errors(); track err) {
+            <p class="error-text">{{ err }}</p>
+          }
+        </div>
+      }
+
+      <!-- Save as Preset Button -->
+      <button class="btn-save-preset" (click)="openSavePresetDialog()">
+        <span class="icon">💾</span>
+        <span>Als Preset speichern</span>
+      </button>
+    </div>
+  }
+
+  <!-- Save Preset Dialog -->
+  @if (showSavePresetDialog()) {
+    <div class="dialog-overlay" (click)="closeSavePresetDialog()">
+      <div class="dialog-content" (click)="$event.stopPropagation()">
+        <h3>Preset speichern</h3>
+        <p>Aktuelle Konfiguration als wiederverwendbares Preset speichern.</p>
+
+        <div class="dialog-form">
+          <label for="presetName">Preset-Name</label>
+          <input
+            id="presetName"
+            type="text"
+            [(ngModel)]="newPresetName"
+            placeholder="z.B. Mein Forstseil 18mm"
+            [disabled]="savePresetStatus() === 'saving'"
+          />
+        </div>
+
+        <div class="dialog-actions">
+          <button class="btn-cancel" (click)="closeSavePresetDialog()" [disabled]="savePresetStatus() === 'saving'">
+            Abbrechen
+          </button>
+          <button
+            class="btn-save"
+            (click)="saveAsPreset()"
+            [disabled]="!newPresetName.trim() || savePresetStatus() === 'saving'"
+          >
+            @switch (savePresetStatus()) {
+              @case ('saving') {
+                <span class="spinner"></span> Speichern...
+              }
+              @case ('success') {
+                ✓ Gespeichert!
+              }
+              @case ('error') {
+                ✗ Fehler
+              }
+              @default {
+                Speichern
+              }
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

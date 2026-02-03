@@ -1,0 +1,201 @@
+<div class="terrain-input-container">
+  <!-- Header with Summary -->
+  <div class="summary-bar">
+    <div class="summary-item">
+      <span class="label">Segmente:</span>
+      <span class="value">{{ segments.length }}</span>
+    </div>
+    <div class="summary-item">
+      <span class="label">Länge:</span>
+      <span class="value">{{ getTotalLength() | number:'1.0-0' }} m</span>
+    </div>
+    <div class="summary-item">
+      <span class="label">Δh:</span>
+      <span class="value">{{ getElevationChange() | number:'1.1-1' }} m</span>
+    </div>
+  </div>
+
+  <!-- Quick Input Form (Mobile-Optimized) -->
+  <div class="input-card" [class.editing]="editingSegment">
+    <h3>
+      @if (editingSegment) {
+        Segment #{{ editingSegment.segmentNumber }} bearbeiten
+      } @else {
+        Segment hinzufügen
+      }
+    </h3>
+
+    <!-- Length Input -->
+    <div class="input-group">
+      <label class="input-label">Länge (m)</label>
+      <div class="numeric-input">
+        <button class="btn-decrement" (click)="incrementLength(-5)" type="button">-5</button>
+        <button class="btn-decrement" (click)="incrementLength(-1)" type="button">-1</button>
+        <input
+          type="number"
+          id="lengthInput"
+          class="numeric-value"
+          [(ngModel)]="lengthMeters"
+          (blur)="validateLength()"
+          inputmode="decimal"
+          step="0.1"
+        />
+        <button class="btn-increment" (click)="incrementLength(1)" type="button">+1</button>
+        <button class="btn-increment" (click)="incrementLength(5)" type="button">+5</button>
+      </div>
+      @if (lengthError) {
+        <div class="input-error">{{ lengthError }}</div>
+      }
+    </div>
+
+    <!-- Slope Input -->
+    <div class="input-group">
+      <label class="input-label">Steigung (%)</label>
+      <div class="numeric-input">
+        <button class="btn-decrement" (click)="incrementSlope(-5)" type="button">-5</button>
+        <button class="btn-decrement" (click)="incrementSlope(-1)" type="button">-1</button>
+        <input
+          type="number"
+          class="numeric-value"
+          [(ngModel)]="slopePercent"
+          (blur)="validateSlope()"
+          inputmode="decimal"
+          step="0.5"
+        />
+        <button class="btn-increment" (click)="incrementSlope(1)" type="button">+1</button>
+        <button class="btn-increment" (click)="incrementSlope(5)" type="button">+5</button>
+      </div>
+      @if (slopeError) {
+        <div class="input-hint">{{ slopeError }}</div>
+      }
+      <div class="input-hint">
+        Positiv = bergauf, Negativ = bergab
+      </div>
+    </div>
+
+    <!-- Notes (Optional) -->
+    <div class="input-group">
+      <label class="input-label">Notiz <span class="optional">(optional)</span></label>
+      <input
+        type="text"
+        class="text-input"
+        [(ngModel)]="notes"
+        placeholder="z.B. Waldweg, Bach"
+        maxlength="50"
+      />
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      @if (editingSegment) {
+        <button
+          class="btn-large btn-secondary"
+          (click)="cancelEdit()"
+          type="button"
+        >
+          Abbrechen
+        </button>
+        <button
+          class="btn-large btn-primary"
+          (click)="updateSegment()"
+          [disabled]="lengthMeters <= 0"
+          type="button"
+        >
+          Aktualisieren
+        </button>
+      } @else {
+        <button
+          class="btn-large btn-secondary"
+          (click)="undoLast()"
+          [disabled]="segments.length === 0"
+          type="button"
+        >
+          ↶ Undo
+        </button>
+        <button
+          class="btn-large btn-primary"
+          (click)="addSegment()"
+          [disabled]="lengthMeters <= 0"
+          type="button"
+        >
+          + Segment
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Segment List -->
+  @if (segments.length > 0) {
+    <div class="segment-list">
+      <h3>Erfasste Segmente</h3>
+      <div class="segments">
+        @for (segment of segments; track segment.id; let i = $index) {
+          <div
+            class="segment-card"
+            [class.highlight]="i === lastAddedIndex"
+            [class.editing]="editingSegment?.id === segment.id"
+          >
+            <div class="segment-header">
+              <span class="segment-number">#{{ segment.segmentNumber }}</span>
+              <div class="segment-actions">
+                <button
+                  class="btn-edit"
+                  (click)="editSegment(segment)"
+                  title="Bearbeiten"
+                  type="button"
+                  [disabled]="editingSegment !== null"
+                >
+                  ✏️
+                </button>
+                <button
+                  class="btn-remove"
+                  (click)="removeSegment(segment.id)"
+                  title="Entfernen"
+                  type="button"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div class="segment-body">
+              <div class="segment-info">
+                <div class="info-row">
+                  <span class="info-label">Länge:</span>
+                  <span class="info-value">{{ segment.lengthMeters }} m</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Steigung:</span>
+                  <span class="info-value" [class.positive]="segment.slopePercent > 0" [class.negative]="segment.slopePercent < 0">
+                    {{ segment.slopePercent > 0 ? '+' : '' }}{{ segment.slopePercent }}%
+                  </span>
+                </div>
+              </div>
+              <div class="segment-cumulative">
+                <div class="info-row">
+                  <span class="info-label">Station:</span>
+                  <span class="info-value">{{ segment.stationLength | number:'1.1-1' }} m</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Höhe:</span>
+                  <span class="info-value">{{ segment.terrainHeight | number:'1.2-2' }} m</span>
+                </div>
+              </div>
+              @if (segment.notes) {
+                <div class="segment-notes">{{ segment.notes }}</div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (segments.length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">📏</div>
+      <h3>Noch keine Segmente erfasst</h3>
+      <p>Beginnen Sie mit dem ersten Segment Ihrer Trasse</p>
+    </div>
+  }
+</div>

@@ -1,0 +1,78 @@
+<div class="project-create-container container">
+  <div class="header">
+    <h1>Neues Projekt erstellen</h1>
+  </div>
+
+  <div class="create-form">
+    <div class="form-group">
+      <label for="projectName" class="form-label">
+        Projektname <span class="required">*</span>
+      </label>
+      <input
+        type="text"
+        id="projectName"
+        class="form-input"
+        [(ngModel)]="projectName"
+        (blur)="validateName()"
+        placeholder="z.B. Holztransport Bergwald 2026"
+        maxlength="50"
+        required
+      />
+      @if (nameError) {
+        <div class="form-error">{{ nameError }}</div>
+      }
+      <div class="form-hint">
+        Geben Sie einen aussagekräftigen Namen für Ihr Seilbahn-Projekt ein
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="projectNotes" class="form-label">
+        Notizen <span class="optional">(optional)</span>
+      </label>
+      <textarea
+        id="projectNotes"
+        class="form-textarea"
+        [(ngModel)]="projectNotes"
+        placeholder="Zusätzliche Informationen zum Projekt..."
+        rows="4"
+        maxlength="500"
+      ></textarea>
+      <div class="form-hint">
+        {{ projectNotes.length }}/500 Zeichen
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button
+        type="button"
+        class="btn-large btn-secondary"
+        (click)="cancel()"
+      >
+        Abbrechen
+      </button>
+      <button
+        type="button"
+        class="btn-large btn-primary"
+        (click)="createProject()"
+        [disabled]="!projectName.trim()"
+      >
+        Projekt erstellen
+      </button>
+    </div>
+  </div>
+
+  <div class="info-box mt-lg">
+    <div class="info-icon">ℹ️</div>
+    <div class="info-content">
+      <h3>Nächste Schritte</h3>
+      <p>Nach dem Erstellen können Sie:</p>
+      <ul>
+        <li>Den Startpunkt auf der Karte festlegen</li>
+        <li>Das Bodenprofil mit Laser-Messungen aufnehmen</li>
+        <li>Stützen platzieren und die Seilgeometrie berechnen</li>
+        <li>Ergebnisse als PDF oder DXF exportieren</li>
+      </ul>
+    </div>
+  </div>
+</div>

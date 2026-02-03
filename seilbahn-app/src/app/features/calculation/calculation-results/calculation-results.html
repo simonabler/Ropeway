@@ -1,0 +1,201 @@
+<div class="calculation-container">
+  <!-- Calculation Trigger -->
+  <div class="trigger-section">
+    @if (!canCalculate()) {
+      <div class="cannot-calculate">
+        <span class="warning-icon">⚠</span>
+        <span>{{ getCannotCalculateReason() }}</span>
+      </div>
+    }
+
+    <button
+      class="btn-calculate"
+      [class.calculating]="isCalculating()"
+      [disabled]="!canCalculate() || isCalculating()"
+      (click)="calculate()"
+    >
+      @if (isCalculating()) {
+        <span class="spinner"></span>
+        <span>Berechne...</span>
+      } @else {
+        <span class="calc-icon">⚡</span>
+        <span>Berechnung starten</span>
+      }
+    </button>
+
+    @if (lastCalculation()) {
+      <p class="last-calc-time">Letzte Berechnung: {{ formatTime(lastCalculation()!) }}</p>
+    }
+  </div>
+
+  <!-- Results Display -->
+  @if (result) {
+    <div class="results-section" [class.invalid]="!result.isValid">
+      <!-- Status Header -->
+      <div class="status-header" [class.success]="result.isValid" [class.error]="!result.isValid">
+        @if (result.isValid) {
+          <span class="status-icon">✓</span>
+          <span class="status-text">Berechnung erfolgreich</span>
+        } @else {
+          <span class="status-icon">✕</span>
+          <span class="status-text">Berechnung fehlgeschlagen</span>
+        }
+      </div>
+
+      <!-- Errors -->
+      @if (getErrors().length > 0) {
+        <div class="message-box error">
+          <h4>Fehler</h4>
+          @for (err of getErrors(); track err.message) {
+            <p>{{ err.message }}</p>
+          }
+        </div>
+      }
+
+      <!-- Main Results (only if valid) -->
+      @if (result.isValid) {
+        <div class="main-results">
+          <!-- Key Values -->
+          <div class="result-cards">
+            <div class="result-card">
+              <span class="result-label">Max. Seilzug</span>
+              <span class="result-value">{{ result.maxTension.toFixed(1) }}</span>
+              <span class="result-unit">kN</span>
+            </div>
+            <div class="result-card">
+              <span class="result-label">Horizontalkraft</span>
+              <span class="result-value">{{ result.maxHorizontalForce.toFixed(1) }}</span>
+              <span class="result-unit">kN</span>
+            </div>
+          </div>
+
+          <!-- Cable Capacity Check (NEW) -->
+          @if (result.cableCapacityCheck) {
+            <div class="capacity-check"
+                 [class.ok]="result.cableCapacityCheck.status === 'ok'"
+                 [class.warning]="result.cableCapacityCheck.status === 'warning'"
+                 [class.fail]="result.cableCapacityCheck.status === 'fail'">
+              <div class="capacity-header">
+                @switch (result.cableCapacityCheck.status) {
+                  @case ('ok') {
+                    <span class="status-icon">✓</span>
+                    <span class="status-text">Seil ausreichend</span>
+                  }
+                  @case ('warning') {
+                    <span class="status-icon">⚠</span>
+                    <span class="status-text">Hohe Auslastung</span>
+                  }
+                  @case ('fail') {
+                    <span class="status-icon">✕</span>
+                    <span class="status-text">Seil überlastet!</span>
+                  }
+                }
+              </div>
+              <div class="capacity-details">
+                <div class="capacity-row">
+                  <span class="label">Seildurchmesser:</span>
+                  <span class="value">{{ result.cableCapacityCheck.cableDiameterMm }} mm</span>
+                </div>
+                <div class="capacity-row">
+                  <span class="label">Zulässige Last:</span>
+                  <span class="value">{{ result.cableCapacityCheck.maxAllowedTensionKN }} kN</span>
+                </div>
+                <div class="capacity-row">
+                  <span class="label">Berechnete Last:</span>
+                  <span class="value">{{ result.cableCapacityCheck.actualMaxTensionKN }} kN</span>
+                </div>
+                <div class="capacity-row highlight">
+                  <span class="label">Auslastung:</span>
+                  <span class="value utilization">{{ result.cableCapacityCheck.utilizationPercent.toFixed(0) }}%</span>
+                </div>
+                @if (result.cableCapacityCheck.status !== 'fail') {
+                  <div class="capacity-row">
+                    <span class="label">Sicherheitsreserve:</span>
+                    <span class="value">{{ result.cableCapacityCheck.safetyMarginPercent.toFixed(0) }}%</span>
+                  </div>
+                }
+              </div>
+              <!-- Utilization Bar -->
+              <div class="utilization-bar">
+                <div class="bar-fill" [style.width.%]="Math.min(result.cableCapacityCheck.utilizationPercent, 100)"></div>
+                <div class="bar-markers">
+                  <span class="marker" style="left: 80%">80%</span>
+                  <span class="marker" style="left: 100%">100%</span>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Critical Clearance -->
+          @if (getCriticalSpan(); as critical) {
+            <div class="clearance-info" [class.warning]="critical.minClearance < 2">
+              <h4>Minimale Bodenfreiheit</h4>
+              <div class="clearance-value">
+                <span class="value">{{ critical.minClearance.toFixed(2) }} m</span>
+                <span class="location">bei Station {{ critical.minClearanceAt.toFixed(1) }} m (Spannfeld {{ critical.spanNumber }})</span>
+              </div>
+            </div>
+          }
+
+          <!-- Span Details -->
+          @if (result.spans.length > 0) {
+            <div class="spans-section">
+              <h4>Spannfelder ({{ result.spans.length }})</h4>
+              <div class="spans-list">
+                @for (span of result.spans; track span.spanNumber) {
+                  <div class="span-card">
+                    <div class="span-header">
+                      <span class="span-number">Spannfeld {{ span.spanNumber }}</span>
+                      <span class="span-length">{{ span.spanLength.toFixed(1) }} m</span>
+                    </div>
+                    <div class="span-details">
+                      <div class="detail-row">
+                        <span class="detail-label">T<sub>max</sub>:</span>
+                        <span class="detail-value">{{ span.maxTension.toFixed(1) }} kN</span>
+                      </div>
+                      <div class="detail-row">
+                        <span class="detail-label">H:</span>
+                        <span class="detail-value">{{ span.horizontalForce.toFixed(1) }} kN</span>
+                      </div>
+                      <div class="detail-row" [class.warning]="span.minClearance < 2">
+                        <span class="detail-label">Freiraum:</span>
+                        <span class="detail-value">{{ span.minClearance.toFixed(2) }} m</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Warnings -->
+      @if (getWarnings().length > 0) {
+        <div class="message-box warning">
+          <h4>Warnungen</h4>
+          @for (warn of getWarnings(); track warn.message) {
+            <p>{{ warn.message }}</p>
+          }
+        </div>
+      }
+
+      <!-- Info Messages -->
+      @if (getInfos().length > 0) {
+        <div class="message-box info">
+          <h4>Hinweise</h4>
+          @for (info of getInfos(); track info.message) {
+            <p>{{ info.message }}</p>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- No Result Yet -->
+  @if (!result && canCalculate()) {
+    <div class="no-result">
+      <p>Starten Sie die Berechnung, um Ergebnisse zu sehen</p>
+    </div>
+  }
+</div>
