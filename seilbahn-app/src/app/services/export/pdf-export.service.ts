@@ -324,7 +324,7 @@ export class PdfExportService {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     const globalResults = [
-      ['Berechnungsmethode:', calc.method === 'parabolic' ? 'Parabel-Näherung' : 'Kettenlinie'],
+      ['Berechnungsmethode:', calc.method === 'parabolic' ? 'Parabel-Näherung' : calc.method === 'catenary-piecewise' ? 'Kettenlinie (stückweise)' : 'Kettenlinie'],
       ['Max. Seilzugkraft (Tmax):', `${calc.maxTension.toFixed(2)} kN`],
       ['Max. Horizontalkraft (H):', `${calc.maxHorizontalForce.toFixed(2)} kN`],
       ['Seildurchmesser:', `${calc.cableCapacityCheck.cableDiameterMm} mm`],

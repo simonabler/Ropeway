@@ -5,6 +5,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import * as d3 from 'd3';
 import { ProjectStateService } from '../../../services/state/project-state.service';
 import { TerrainSegment, Support, CalculationResult } from '../../../models';
+import { calculatePiecewiseCatenaryCable } from '../../../services/calculation/engine/physics/piecewise-catenary';
+import { solveCatenaryA } from '../../../services/calculation/engine/physics/catenary-utils';
 
 interface ChartPoint {
   x: number;
@@ -472,6 +474,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     const points: ChartPoint[] = [];
     const H = this.horizontalTension() * 1000; // kN to N
     const w = this.cableWeight(); // N/m
+    const solver = this.getSolverType();
 
     // For each span between supports
     for (let i = 0; i < allPoints.length - 1; i++) {
@@ -481,24 +484,25 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
       if (L <= 0) continue;
 
-      // Sag at midpoint: f = w * L^2 / (8 * H)
-      const f = (w * L * L) / (8 * H);
+      const spanGeometry = {
+        length: L,
+        heightDiff: end.y - start.y,
+        angle: (Math.atan2(end.y - start.y, L) * 180) / Math.PI,
+        fromHeight: start.y,
+        toHeight: end.y,
+        fromSupportId: 'chart-start',
+        toSupportId: 'chart-end',
+        spanNumber: i + 1
+      };
 
-      // Height difference
-      const dh = end.y - start.y;
-
-      // Generate points along span
-      const numPoints = Math.max(20, Math.floor(L / 2));
-      for (let j = 0; j <= numPoints; j++) {
-        const t = j / numPoints;
-        const x = start.x + t * L;
-        const localX = t * L;
-
-        // Parabolic sag + linear interpolation for height difference
-        const sag = 4 * f * (localX / L) * (1 - localX / L);
-        const y = start.y + t * dh - sag;
-
-        points.push({ x, y });
+      const sagM = (w * L * L) / (8 * H);
+      const sampleCount = Math.max(80, Math.floor(L));
+      for (let j = 0; j <= sampleCount; j++) {
+        const x = (j / sampleCount) * L;
+        const y = solver === 'catenary'
+          ? this.evaluateCatenaryY(spanGeometry, sagM, x)
+          : this.evaluateParabolicY(spanGeometry, sagM, x);
+        points.push({ x: start.x + x, y });
       }
     }
 
@@ -520,6 +524,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     const H = this.horizontalTension() * 1000; // kN to N
     const w = this.cableWeight(); // N/m
     const P = this.pointLoad(); // N
+    const solver = this.getSolverType();
     const loadPercent = this.loadPositionPercent() / 100;
 
     const totalLength = allPoints[allPoints.length - 1].x - allPoints[0].x;
@@ -536,44 +541,57 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
       if (L <= 0) continue;
 
+      const spanGeometry = {
+        length: L,
+        heightDiff: end.y - start.y,
+        angle: (Math.atan2(end.y - start.y, L) * 180) / Math.PI,
+        fromHeight: start.y,
+        toHeight: end.y,
+        fromSupportId: 'chart-start',
+        toSupportId: 'chart-end',
+        spanNumber: spanIndex + 1
+      };
+
       const spanHasLoad = loadX >= start.x && loadX <= end.x;
-      const a = spanHasLoad ? loadX - start.x : 0;
-      const b = spanHasLoad ? end.x - loadX : 0;
+      const loadRatio = spanHasLoad ? (loadX - start.x) / L : 0.5;
 
-      // Sag from distributed load
-      const fDistributed = (w * L * L) / (8 * H);
+      const sagM = (w * L * L) / (8 * H);
+      const sampleCount = Math.max(120, Math.floor(L));
 
-      // Additional sag from point load at position a
-      // Maximum deflection from point load: delta = P * a * b / (H * L)
-      const fPointMax = spanHasLoad && a > 0 && b > 0 ? (P * a * b) / (H * L) : 0;
-
-      // Height difference
-      const dh = end.y - start.y;
-
-      // Generate points along span
-      const numPoints = Math.max(30, Math.floor(L / 2));
-      for (let j = 0; j <= numPoints; j++) {
-        const t = j / numPoints;
-        const x = start.x + t * L;
-        const localX = t * L;
-
-        // Distributed load sag (parabolic)
-        const sagDistributed = 4 * fDistributed * (localX / L) * (1 - localX / L);
-
-        // Point load sag (triangular distribution, max at load position)
-        let sagPoint = 0;
-        if (spanHasLoad && fPointMax > 0) {
-          if (localX <= a) {
-            sagPoint = fPointMax * (localX / a);
-          } else {
-            sagPoint = fPointMax * ((L - localX) / b);
-          }
+      if (solver === 'parabolic') {
+        for (let j = 0; j <= sampleCount; j++) {
+          const t = j / sampleCount;
+          const localX = t * L;
+          const y = this.calculateLoadedYAtSample(
+            { start, end, L, localX, t },
+            loadX,
+            H,
+            w,
+            P
+          );
+          points.push({ x: start.x + localX, y });
         }
-
-        const totalSag = sagDistributed + sagPoint;
-        const y = start.y + t * dh - totalSag;
-
-        points.push({ x, y });
+      } else if (P > 0) {
+        const spanResult = calculatePiecewiseCatenaryCable(
+          spanGeometry,
+          w,
+          sagM,
+          P,
+          loadRatio,
+          sampleCount
+        );
+        for (let j = 0; j <= sampleCount; j++) {
+          const t = j / sampleCount;
+          const localX = t * L;
+          const y = this.interpolateCableHeight(spanResult.cableLine, t, start.y);
+          points.push({ x: start.x + localX, y });
+        }
+      } else {
+        for (let j = 0; j <= sampleCount; j++) {
+          const x = (j / sampleCount) * L;
+          const y = this.evaluateCatenaryY(spanGeometry, sagM, x);
+          points.push({ x: start.x + x, y });
+        }
       }
     }
 
@@ -593,6 +611,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     const H = this.horizontalTension() * 1000; // kN to N
     const w = this.cableWeight(); // N/m
     const P = this.pointLoad(); // N
+    const solver = this.getSolverType();
 
     const totalLength = samples[samples.length - 1].x - samples[0].x;
     if (totalLength <= 0) {
@@ -604,7 +623,20 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     let worstPoint: CriticalPoint | null = null;
 
     const envelope = samples.map((sample) => {
-      const y = this.calculateLoadedYAtSample(sample, sample.x, H, w, P);
+      const sagM = (w * sample.L * sample.L) / (8 * H);
+      const y = solver === 'parabolic'
+        ? this.calculateLoadedYAtSample(sample, sample.x, H, w, P)
+        : P > 0
+          ? this.calculatePiecewiseYAtSample(sample, H, w, sagM, P)
+          : this.evaluateCatenaryY(
+            {
+              length: sample.L,
+              heightDiff: sample.end.y - sample.start.y,
+              fromHeight: sample.start.y
+            },
+            sagM,
+            sample.localX
+          );
       const terrainHeight = this.interpolateTerrainHeight(sample.x);
       const clearance = y - terrainHeight;
       if (clearance < worstClearance) {
@@ -622,6 +654,88 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
     this.criticalPoint.set(worstPoint);
     return envelope;
+  }
+
+  private calculateCatenaryYAtSample(
+    sample: { start: ChartPoint; end: ChartPoint; L: number; localX: number; t: number },
+    H: number,
+    w: number,
+    sagM: number
+  ): number {
+    return this.evaluateCatenaryY(
+      {
+        length: sample.L,
+        heightDiff: sample.end.y - sample.start.y,
+        fromHeight: sample.start.y
+      },
+      sagM,
+      sample.localX
+    );
+  }
+
+  private calculatePiecewiseYAtSample(
+    sample: { start: ChartPoint; end: ChartPoint; L: number; localX: number; t: number; spanIndex?: number },
+    H: number,
+    w: number,
+    sagM: number,
+    P: number
+  ): number {
+    const { start, end, L } = sample;
+    const spanGeometry = {
+      length: L,
+      heightDiff: end.y - start.y,
+      angle: (Math.atan2(end.y - start.y, L) * 180) / Math.PI,
+      fromHeight: start.y,
+      toHeight: end.y,
+      fromSupportId: 'chart-start',
+      toSupportId: 'chart-end',
+      spanNumber: 1
+    };
+    const loadRatio = sample.localX / L;
+    const spanResult = calculatePiecewiseCatenaryCable(spanGeometry, w, sagM, P, loadRatio, Math.max(120, Math.floor(L)));
+    return this.interpolateCableHeight(spanResult.cableLine, sample.t, start.y);
+  }
+
+  private evaluateParabolicY(span: {
+    length: number;
+    heightDiff: number;
+    fromHeight: number;
+  }, sagM: number, x: number): number {
+    const L = span.length;
+    const a = (4 * sagM) / (L * L);
+    const yRelative = -a * x * (L - x);
+    const chordHeight = span.fromHeight + (span.heightDiff / L) * x;
+    return chordHeight + yRelative;
+  }
+
+  private evaluateCatenaryY(span: {
+    length: number;
+    heightDiff: number;
+    fromHeight: number;
+  }, sagM: number, x: number): number {
+    const L = span.length;
+    const a = solveCatenaryA(L, Math.max(sagM, 0.01));
+    const yRel = a * Math.cosh((x - L / 2) / a) - a * Math.cosh(L / (2 * a));
+    const chordHeight = span.fromHeight + (span.heightDiff / L) * x;
+    return chordHeight + yRel;
+  }
+
+  private interpolateCableHeight(
+    cableLine: Array<{ stationLength: number; height: number }>,
+    t: number,
+    fallback: number
+  ): number {
+    const count = cableLine.length;
+    if (count === 0) return fallback;
+    if (count === 1) return cableLine[0].height;
+
+    const rawIndex = Math.max(0, Math.min(1, t)) * (count - 1);
+    const idx = Math.floor(rawIndex);
+    const next = Math.min(idx + 1, count - 1);
+    if (idx === next) return cableLine[idx].height;
+
+    const frac = rawIndex - idx;
+    return cableLine[idx].height + (cableLine[next].height - cableLine[idx].height) * frac;
   }
 
   private buildSpanSamples(): Array<{
@@ -652,7 +766,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       const L = end.x - start.x;
       if (L <= 0) continue;
 
-      const numPoints = Math.max(30, Math.floor(L / 2));
+      const numPoints = Math.max(120, Math.floor(L));
       for (let j = 0; j <= numPoints; j++) {
         const t = j / numPoints;
         const x = start.x + t * L;
@@ -725,6 +839,10 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
     // Sort by x position
     return points.sort((a, b) => a.x - b.x);
+  }
+
+  private getSolverType(): 'parabolic' | 'catenary' | 'catenary-piecewise' {
+    return this.projectStateService.currentProject?.solverType ?? 'parabolic';
   }
 
   /**

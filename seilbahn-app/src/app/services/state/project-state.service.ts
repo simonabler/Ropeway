@@ -94,6 +94,7 @@ export class ProjectStateService {
       status: 'draft',
       startPoint: { lat: 0, lng: 0 },
       azimuth: 0,
+      solverType: 'parabolic',
       terrainProfile: {
         segments: [],
         recordingMethod: 'manual',
@@ -223,6 +224,18 @@ export class ProjectStateService {
     const project = this.currentProjectSubject.value;
     if (project) {
       project.cableConfig = config;
+      this.currentProjectSubject.next(project);
+      this.isDirtySubject.next(true);
+    }
+  }
+
+  /**
+   * Update solver type
+   */
+  updateSolverType(solverType: Project['solverType']): void {
+    const project = this.currentProjectSubject.value;
+    if (project) {
+      project.solverType = solverType;
       this.currentProjectSubject.next(project);
       this.isDirtySubject.next(true);
     }

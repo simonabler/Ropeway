@@ -11,6 +11,29 @@
   text-align: center;
 }
 
+.solver-select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+
+  label {
+    font-size: $font-size-sm;
+    color: $gray-700;
+    font-weight: 600;
+  }
+
+  select {
+    padding: 6px 10px;
+    border: 1px solid $gray-300;
+    border-radius: $border-radius-sm;
+    background: white;
+    font-size: $font-size-sm;
+    color: $gray-800;
+  }
+}
+
 .cannot-calculate {
   display: flex;
   align-items: center;

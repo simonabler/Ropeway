@@ -1,6 +1,14 @@
 <div class="calculation-container">
   <!-- Calculation Trigger -->
   <div class="trigger-section">
+    <div class="solver-select">
+      <label for="solverType">Solver</label>
+      <select id="solverType" [ngModel]="solverType" (ngModelChange)="onSolverChange($event)">
+        <option value="parabolic">Parabel (schnell)</option>
+        <option value="catenary">Kettenlinie (genauer)</option>
+        <option value="catenary-piecewise">Kettenlinie stückweise (exakt mit Punktlast)</option>
+      </select>
+    </div>
     @if (!canCalculate()) {
       <div class="cannot-calculate">
         <span class="warning-icon">⚠</span>

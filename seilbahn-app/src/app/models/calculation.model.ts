@@ -3,7 +3,7 @@
  */
 export interface CalculationResult {
   timestamp: Date;
-  method: 'parabolic' | 'catenary';
+  method: SolverType;
 
   cableLine: CablePoint[];               // Cable geometry points
   spans: SpanResult[];
@@ -41,6 +41,11 @@ export interface CableCapacityCheck {
  * Cable Capacity Status
  */
 export type CableCapacityStatus = 'ok' | 'warning' | 'fail';
+
+/**
+ * Solver Type
+ */
+export type SolverType = 'parabolic' | 'catenary' | 'catenary-piecewise';
 
 /**
  * Force Result Vector (kN)

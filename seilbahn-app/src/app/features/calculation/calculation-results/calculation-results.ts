@@ -1,7 +1,8 @@
 import { Component, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { CalculationResult, CalculationWarning, SpanResult } from '../../../models';
+import { CalculationResult, CalculationWarning, SpanResult, SolverType } from '../../../models';
 import { ProjectStateService } from '../../../services/state/project-state.service';
 import { CableCalculatorService } from '../../../services/calculation/cable-calculator.service';
 
@@ -11,7 +12,7 @@ import { CableCalculatorService } from '../../../services/calculation/cable-calc
  */
 @Component({
   selector: 'app-calculation-results',
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './calculation-results.html',
   styleUrl: './calculation-results.scss',
   standalone: true
@@ -73,6 +74,15 @@ export class CalculationResults {
     return this._calculationResult();
   }
 
+  get solverType(): SolverType {
+    return this.project?.solverType ?? 'parabolic';
+  }
+
+  onSolverChange(value: string): void {
+    const solver = value as SolverType;
+    this.projectStateService.updateSolverType(solver);
+  }
+
   /**
    * Check if calculation is possible
    */
@@ -128,7 +138,7 @@ export class CalculationResults {
         // Create error result
         const errorResult: CalculationResult = {
           timestamp: new Date(),
-          method: 'parabolic',
+          method: project.solverType ?? 'parabolic',
           cableLine: [],
           spans: [],
           maxTension: 0,
@@ -207,7 +217,8 @@ export class CalculationResults {
       cable.allowedSag,
       cable.cableDiameterMm,
       cable.minBreakingStrengthNPerMm2,
-      cable.cableMaterial
+      cable.cableMaterial,
+      project.solverType || 'parabolic'
     ].join('|');
     return `${terrainKey}__${supportsKey}__${cableKey}`;
   }

@@ -10,6 +10,8 @@ import {
 } from '../../models';
 import { calculateSpanGeometries } from './engine/geometry/span-geometry';
 import { calculateParabolicCable, ParabolicResult } from './engine/physics/parabolic-approximation';
+import { calculateCatenaryCable } from './engine/physics/catenary-approximation';
+import { calculatePiecewiseCatenaryCable } from './engine/physics/piecewise-catenary';
 import { checkCableClearance, applyClearanceToSpan } from './engine/geometry/clearance-checker';
 import { checkCableCapacity, getCapacityStatusText } from './engine/physics/cable-capacity';
 
@@ -26,6 +28,7 @@ export class CableCalculatorService {
    */
   calculateCable(project: Project): CalculationResult {
     const warnings: CalculationWarning[] = [];
+    const solverType = project.solverType ?? 'parabolic';
 
     // Validate input
     const validationWarnings = this.validateProject(project);
@@ -34,7 +37,7 @@ export class CableCalculatorService {
     // If critical errors, return invalid result
     const hasCriticalErrors = warnings.some(w => w.severity === 'error');
     if (hasCriticalErrors) {
-      return this.createInvalidResult(warnings);
+      return this.createInvalidResult(warnings, solverType);
     }
 
     // Calculate span geometries
@@ -49,46 +52,59 @@ export class CableCalculatorService {
         severity: 'error',
         message: 'Keine Spannfelder vorhanden. Fügen Sie mindestens eine Stütze hinzu.'
       });
-      return this.createInvalidResult(warnings);
+      return this.createInvalidResult(warnings, solverType);
     }
 
     // Cable weight in N/m (convert from kg/m)
     const cableWeightN = project.cableConfig.cableWeightPerMeter * 9.81;
+    const pointLoadN = project.cableConfig.maxLoad * 9.81;
 
     // Default sag if not specified
     const sagM = project.cableConfig.allowedSag || 3.0;
 
+    if (solverType === 'catenary-piecewise') {
+      warnings.push({
+        severity: 'info',
+        message: 'Stückweise Kettenlinie: Punktlast wird in Feldmitte angenommen.'
+      });
+    }
+
     // Calculate each span
-    const parabolicResults: ParabolicResult[] = [];
+    const spanResults: ParabolicResult[] = [];
     let baseStation = project.startStation.stationLength;
 
     for (const spanGeometry of spanGeometries) {
-      // Calculate parabolic cable
-      const parabolic = calculateParabolicCable(
-        spanGeometry,
-        cableWeightN,
-        sagM
-      );
+      const spanResult = solverType === 'catenary'
+        ? calculateCatenaryCable(spanGeometry, cableWeightN, sagM)
+        : solverType === 'catenary-piecewise'
+          ? calculatePiecewiseCatenaryCable(
+            spanGeometry,
+            cableWeightN,
+            sagM,
+            pointLoadN,
+            0.5
+          )
+          : calculateParabolicCable(spanGeometry, cableWeightN, sagM);
 
       // Check clearance
       const clearanceResult = checkCableClearance(
-        parabolic.cableLine,
+        spanResult.cableLine,
         project.terrainProfile,
         baseStation,
         project.cableConfig.minGroundClearance
       );
 
       // Apply clearance to result
-      const resultWithClearance = applyClearanceToSpan(parabolic, clearanceResult);
+      const resultWithClearance = applyClearanceToSpan(spanResult, clearanceResult);
 
-      parabolicResults.push(resultWithClearance);
+      spanResults.push(resultWithClearance);
 
       // Add warnings for clearance violations
       if (clearanceResult.isViolated) {
         warnings.push({
           severity: 'warning',
-          message: `Spannfeld ${parabolic.spanNumber}: Bodenfreiheit unterschritten (min: ${clearanceResult.minClearance.toFixed(2)}m bei Station ${clearanceResult.minClearanceAt.toFixed(1)}m)`,
-          relatedElement: `span-${parabolic.spanNumber}`
+          message: `Spannfeld ${spanResult.spanNumber}: Bodenfreiheit unterschritten (min: ${clearanceResult.minClearance.toFixed(2)}m bei Station ${clearanceResult.minClearanceAt.toFixed(1)}m)`,
+          relatedElement: `span-${spanResult.spanNumber}`
         });
       }
 
@@ -99,7 +115,7 @@ export class CableCalculatorService {
     const combinedCableLine: CablePoint[] = [];
     baseStation = project.startStation.stationLength;
 
-    for (const result of parabolicResults) {
+    for (const result of spanResults) {
       for (const point of result.cableLine) {
         combinedCableLine.push({
           stationLength: baseStation + point.stationLength,
@@ -111,7 +127,7 @@ export class CableCalculatorService {
     }
 
     // Convert parabolic results to span results
-    const spans: SpanResult[] = parabolicResults.map(pr => ({
+    const spans: SpanResult[] = spanResults.map(pr => ({
       spanNumber: pr.spanNumber,
       fromSupport: pr.fromSupportId,
       toSupport: pr.toSupportId,
@@ -156,7 +172,7 @@ export class CableCalculatorService {
 
     return {
       timestamp: new Date(),
-      method: 'parabolic',
+      method: solverType,
       cableLine: combinedCableLine,
       spans,
       maxTension,
@@ -180,10 +196,10 @@ export class CableCalculatorService {
   /**
    * Create an invalid result for error cases
    */
-  private createInvalidResult(warnings: CalculationWarning[]): CalculationResult {
+  private createInvalidResult(warnings: CalculationWarning[], method: Project['solverType'] = 'parabolic'): CalculationResult {
     return {
       timestamp: new Date(),
-      method: 'parabolic',
+      method: method ?? 'parabolic',
       cableLine: [],
       spans: [],
       maxTension: 0,
