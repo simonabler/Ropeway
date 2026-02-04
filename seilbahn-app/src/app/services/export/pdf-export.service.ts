@@ -18,35 +18,48 @@ export class PdfExportService {
   /**
    * Generate complete project PDF report
    */
-  async generateReport(project: Project): Promise<Blob> {
+  async generateReport(project: Project, plotImage?: string | null): Promise<Blob> {
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4'
     });
 
+    let pageNum = 1;
+
     // Page 1: Cover & Summary
-    this.addCoverPage(doc, project);
+    this.addCoverPage(doc, project, pageNum);
 
     // Page 2: Terrain Profile Data
     doc.addPage();
-    this.addTerrainPage(doc, project);
+    pageNum += 1;
+    this.addTerrainPage(doc, project, pageNum);
 
-    // Page 3: Support Data
+    // Optional: Plot image page
+    if (plotImage) {
+      doc.addPage();
+      pageNum += 1;
+      this.addPlotPage(doc, plotImage, pageNum);
+    }
+
+    // Support Data
     if (project.supports.length > 0) {
       doc.addPage();
-      this.addSupportPage(doc, project);
+      pageNum += 1;
+      this.addSupportPage(doc, project, pageNum);
     }
 
-    // Page 4: Calculation Results
+    // Calculation Results
     if (project.calculationResult) {
       doc.addPage();
-      this.addCalculationPage(doc, project);
+      pageNum += 1;
+      this.addCalculationPage(doc, project, pageNum);
     }
 
-    // Page 5: Cable Parameters
+    // Cable Parameters
     doc.addPage();
-    this.addCableParametersPage(doc, project);
+    pageNum += 1;
+    this.addCableParametersPage(doc, project, pageNum);
 
     return doc.output('blob');
   }
@@ -54,8 +67,8 @@ export class PdfExportService {
   /**
    * Download PDF directly
    */
-  async downloadReport(project: Project): Promise<void> {
-    const blob = await this.generateReport(project);
+  async downloadReport(project: Project, plotImage?: string | null): Promise<void> {
+    const blob = await this.generateReport(project, plotImage);
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -67,7 +80,7 @@ export class PdfExportService {
   /**
    * Page 1: Cover Page with Summary
    */
-  private addCoverPage(doc: jsPDF, project: Project): void {
+  private addCoverPage(doc: jsPDF, project: Project, pageNum: number): void {
     let y = this.margin;
 
     // Title
@@ -164,13 +177,13 @@ export class PdfExportService {
     }
 
     // Footer
-    this.addFooter(doc, 1);
+    this.addFooter(doc, pageNum);
   }
 
   /**
    * Page 2: Terrain Profile Data
    */
-  private addTerrainPage(doc: jsPDF, project: Project): void {
+  private addTerrainPage(doc: jsPDF, project: Project, pageNum: number): void {
     let y = this.margin;
 
     // Header
@@ -185,7 +198,7 @@ export class PdfExportService {
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       doc.text('Keine Terrain-Daten vorhanden.', this.margin, y);
-      this.addFooter(doc, 2);
+      this.addFooter(doc, pageNum);
       return;
     }
 
@@ -238,13 +251,13 @@ export class PdfExportService {
       y += 6;
     }
 
-    this.addFooter(doc, 2);
+    this.addFooter(doc, pageNum);
   }
 
   /**
    * Page 3: Support Data
    */
-  private addSupportPage(doc: jsPDF, project: Project): void {
+  private addSupportPage(doc: jsPDF, project: Project, pageNum: number): void {
     let y = this.margin;
 
     doc.setFontSize(16);
@@ -286,13 +299,13 @@ export class PdfExportService {
       y += 6;
     }
 
-    this.addFooter(doc, 3);
+    this.addFooter(doc, pageNum);
   }
 
   /**
    * Page 4: Calculation Results
    */
-  private addCalculationPage(doc: jsPDF, project: Project): void {
+  private addCalculationPage(doc: jsPDF, project: Project, pageNum: number): void {
     const calc = project.calculationResult;
     if (!calc) return;
 
@@ -385,13 +398,13 @@ export class PdfExportService {
       doc.setTextColor(0, 0, 0);
     }
 
-    this.addFooter(doc, 4);
+    this.addFooter(doc, pageNum);
   }
 
   /**
    * Page 5: Cable Parameters
    */
-  private addCableParametersPage(doc: jsPDF, project: Project): void {
+  private addCableParametersPage(doc: jsPDF, project: Project, pageNum: number): void {
     let y = this.margin;
 
     doc.setFontSize(16);
@@ -458,7 +471,35 @@ export class PdfExportService {
       y += 10;
     }
 
-    this.addFooter(doc, 5);
+    this.addFooter(doc, pageNum);
+  }
+
+  /**
+   * Page: Profile Plot Image
+   */
+  private addPlotPage(doc: jsPDF, plotImage: string, pageNum: number): void {
+    let y = this.margin;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Profil-Plot', this.margin, y);
+    y += 12;
+
+    const availableWidth = this.contentWidth;
+    const availableHeight = this.pageHeight - y - this.margin - 10;
+
+    const props = doc.getImageProperties(plotImage);
+    const widthScale = availableWidth / props.width;
+    const heightScale = availableHeight / props.height;
+    const scale = Math.min(widthScale, heightScale);
+
+    const imgWidth = props.width * scale;
+    const imgHeight = props.height * scale;
+    const x = this.margin + (availableWidth - imgWidth) / 2;
+
+    doc.addImage(plotImage, 'PNG', x, y, imgWidth, imgHeight, undefined, 'FAST');
+
+    this.addFooter(doc, pageNum);
   }
 
   /**

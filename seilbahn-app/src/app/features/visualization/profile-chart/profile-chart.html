@@ -203,7 +203,7 @@
       }
     </div>
 
-    <div #chartContainer class="chart-wrapper">
+    <div #chartContainer class="chart-wrapper" id="profile-chart-export">
       <!-- D3 SVG will be inserted here -->
     </div>
 
@@ -212,6 +212,10 @@
       <div class="legend-item">
         <span class="legend-color terrain"></span>
         <span class="legend-label">Gelände</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color cable"></span>
+        <span class="legend-label">Maximale Punktlast (H?llkurve)</span>
       </div>
       @if (showEmptyCable()) {
         <div class="legend-item">

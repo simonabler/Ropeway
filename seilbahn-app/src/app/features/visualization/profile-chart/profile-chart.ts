@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import * as d3 from 'd3';
 import { ProjectStateService } from '../../../services/state/project-state.service';
-import { TerrainSegment, Support, CalculationResult, CablePoint } from '../../../models';
+import { TerrainSegment, Support, CalculationResult } from '../../../models';
 
 interface ChartPoint {
   x: number;
@@ -116,6 +116,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
   // Calculated critical point
   criticalPoint = signal<CriticalPoint | null>(null);
+  private maxLoadEnvelope: ChartPoint[] = [];
 
   // Anchor points with forces
   startAnchor = signal<AnchorPointData | null>(null);
@@ -415,12 +416,12 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     if (!this.chartGroup || this.terrain.length === 0) return;
 
     const terrainPoints = this.getTerrainPoints();
-    const cablePoints = this.calculation?.cableLine || [];
     const emptyCablePoints = this.calculateEmptyCable();
     const loadedCablePoints = this.calculateLoadedCable();
+    this.maxLoadEnvelope = this.calculateMaxLoadEnvelope();
 
-    const xExtent = this.calculateXExtent(terrainPoints, cablePoints, emptyCablePoints, loadedCablePoints);
-    const yExtent = this.calculateYExtent(terrainPoints, cablePoints, emptyCablePoints, loadedCablePoints);
+    const xExtent = this.calculateXExtent(terrainPoints, this.maxLoadEnvelope, emptyCablePoints, loadedCablePoints);
+    const yExtent = this.calculateYExtent(terrainPoints, this.maxLoadEnvelope, emptyCablePoints, loadedCablePoints);
 
     this.xScale = d3.scaleLinear()
       .domain(xExtent)
@@ -512,7 +513,6 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     const allPoints = this.getSupportPoints();
 
     if (allPoints.length < 2) {
-      this.criticalPoint.set(null);
       return [];
     }
 
@@ -524,13 +524,10 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
     const totalLength = allPoints[allPoints.length - 1].x - allPoints[0].x;
     if (totalLength <= 0) {
-      this.criticalPoint.set(null);
       return [];
     }
 
     const loadX = allPoints[0].x + loadPercent * totalLength;
-    let worstClearance = Infinity;
-    let worstPoint: CriticalPoint | null = null;
 
     for (let spanIndex = 0; spanIndex < allPoints.length - 1; spanIndex++) {
       const start = allPoints[spanIndex];
@@ -577,26 +574,126 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
         const y = start.y + t * dh - totalSag;
 
         points.push({ x, y });
-
-        // Check clearance
-        const terrainHeight = this.interpolateTerrainHeight(x);
-        const clearance = y - terrainHeight;
-
-        if (clearance < worstClearance) {
-          worstClearance = clearance;
-          worstPoint = {
-            x,
-            cableHeight: y,
-            terrainHeight,
-            clearance,
-            spanIndex
-          };
-        }
       }
     }
 
-    this.criticalPoint.set(worstPoint);
     return points;
+  }
+
+  /**
+   * Calculate worst-case (max load) envelope along the entire cable
+   */
+  private calculateMaxLoadEnvelope(): ChartPoint[] {
+    const samples = this.buildSpanSamples();
+    if (samples.length === 0) {
+      this.criticalPoint.set(null);
+      return [];
+    }
+
+    const H = this.horizontalTension() * 1000; // kN to N
+    const w = this.cableWeight(); // N/m
+    const P = this.pointLoad(); // N
+
+    const totalLength = samples[samples.length - 1].x - samples[0].x;
+    if (totalLength <= 0) {
+      this.criticalPoint.set(null);
+      return [];
+    }
+
+    let worstClearance = Infinity;
+    let worstPoint: CriticalPoint | null = null;
+
+    const envelope = samples.map((sample) => {
+      const y = this.calculateLoadedYAtSample(sample, sample.x, H, w, P);
+      const terrainHeight = this.interpolateTerrainHeight(sample.x);
+      const clearance = y - terrainHeight;
+      if (clearance < worstClearance) {
+        worstClearance = clearance;
+        worstPoint = {
+          x: sample.x,
+          cableHeight: y,
+          terrainHeight,
+          clearance,
+          spanIndex: sample.spanIndex
+        };
+      }
+      return { x: sample.x, y };
+    });
+
+    this.criticalPoint.set(worstPoint);
+    return envelope;
+  }
+
+  private buildSpanSamples(): Array<{
+    x: number;
+    start: ChartPoint;
+    end: ChartPoint;
+    L: number;
+    localX: number;
+    t: number;
+    spanIndex: number;
+  }> {
+    const allPoints = this.getSupportPoints();
+    if (allPoints.length < 2) return [];
+
+    const samples: Array<{
+      x: number;
+      start: ChartPoint;
+      end: ChartPoint;
+      L: number;
+      localX: number;
+      t: number;
+      spanIndex: number;
+    }> = [];
+
+    for (let spanIndex = 0; spanIndex < allPoints.length - 1; spanIndex++) {
+      const start = allPoints[spanIndex];
+      const end = allPoints[spanIndex + 1];
+      const L = end.x - start.x;
+      if (L <= 0) continue;
+
+      const numPoints = Math.max(30, Math.floor(L / 2));
+      for (let j = 0; j <= numPoints; j++) {
+        const t = j / numPoints;
+        const x = start.x + t * L;
+        const localX = t * L;
+        samples.push({ x, start, end, L, localX, t, spanIndex });
+      }
+    }
+
+    return samples;
+  }
+
+  private calculateLoadedYAtSample(
+    sample: { start: ChartPoint; end: ChartPoint; L: number; localX: number; t: number },
+    loadX: number,
+    H: number,
+    w: number,
+    P: number
+  ): number {
+    const { start, end, L, localX, t } = sample;
+    const dh = end.y - start.y;
+
+    const spanHasLoad = loadX >= start.x && loadX <= end.x;
+    const a = spanHasLoad ? loadX - start.x : 0;
+    const b = spanHasLoad ? end.x - loadX : 0;
+
+    const fDistributed = (w * L * L) / (8 * H);
+    const fPointMax = spanHasLoad && a > 0 && b > 0 ? (P * a * b) / (H * L) : 0;
+
+    const sagDistributed = 4 * fDistributed * (localX / L) * (1 - localX / L);
+
+    let sagPoint = 0;
+    if (spanHasLoad && fPointMax > 0) {
+      if (localX <= a) {
+        sagPoint = fPointMax * (localX / a);
+      } else {
+        sagPoint = fPointMax * ((L - localX) / b);
+      }
+    }
+
+    const totalSag = sagDistributed + sagPoint;
+    return start.y + t * dh - totalSag;
   }
 
   /**
@@ -945,7 +1042,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
   private calculateXExtent(
     terrainPoints: ChartPoint[],
-    cablePoints: CablePoint[],
+    cablePoints: ChartPoint[],
     emptyCable: ChartPoint[],
     loadedCable: ChartPoint[]
   ): [number, number] {
@@ -955,7 +1052,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       if (p.x > maxX) maxX = p.x;
     }
     for (const p of cablePoints) {
-      if (p.stationLength > maxX) maxX = p.stationLength;
+      if (p.x > maxX) maxX = p.x;
     }
     for (const p of emptyCable) {
       if (p.x > maxX) maxX = p.x;
@@ -972,7 +1069,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
   private calculateYExtent(
     terrainPoints: ChartPoint[],
-    cablePoints: CablePoint[],
+    cablePoints: ChartPoint[],
     emptyCable: ChartPoint[],
     loadedCable: ChartPoint[]
   ): [number, number] {
@@ -984,8 +1081,8 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       if (p.y > maxY) maxY = p.y;
     }
     for (const p of cablePoints) {
-      if (p.height < minY) minY = p.height;
-      if (p.height > maxY) maxY = p.height;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
     }
     for (const p of emptyCable) {
       if (p.y < minY) minY = p.y;
@@ -1279,30 +1376,28 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
     cableLayer.selectAll('*').remove();
 
-    const cablePoints = this.calculation?.cableLine;
-    if (!cablePoints || cablePoints.length < 2) return;
+    let chartPoints: ChartPoint[] = [];
+    if (this.maxLoadEnvelope.length >= 2) {
+      chartPoints = this.maxLoadEnvelope;
+    } else {
+      const cablePoints = this.calculation?.cableLine;
+      if (!cablePoints || cablePoints.length < 2) return;
 
-    // Convert cable points and add anchor points at ground level
-    const chartPoints: ChartPoint[] = [];
-
-    // Start anchor at ground level (x=0, y=0)
-    chartPoints.push({ x: 0, y: 0 });
-
-    // Add all cable points from calculation
-    for (const p of cablePoints) {
-      chartPoints.push({
-        x: p.stationLength,
-        y: p.height
-      });
-    }
-
-    // End anchor at ground level (last terrain height)
-    if (this.terrain.length > 0) {
-      const lastTerrain = this.terrain[this.terrain.length - 1];
-      chartPoints.push({
-        x: lastTerrain.stationLength,
-        y: lastTerrain.terrainHeight
-      });
+      // Convert cable points and add anchor points at ground level
+      chartPoints.push({ x: 0, y: 0 });
+      for (const p of cablePoints) {
+        chartPoints.push({
+          x: p.stationLength,
+          y: p.height
+        });
+      }
+      if (this.terrain.length > 0) {
+        const lastTerrain = this.terrain[this.terrain.length - 1];
+        chartPoints.push({
+          x: lastTerrain.stationLength,
+          y: lastTerrain.terrainHeight
+        });
+      }
     }
 
     const lineGenerator = d3.line<ChartPoint>()

@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ProjectStateService } from '../../../services/state/project-state.service';
 import { PdfExportService } from '../../../services/export/pdf-export.service';
 import { DxfExportService } from '../../../services/export/dxf-export.service';
+import html2canvas from 'html2canvas';
 
 /**
  * Export Panel Component
@@ -42,7 +43,8 @@ export class ExportPanel {
     this.exportStatus.set('PDF wird erstellt...');
 
     try {
-      await this.pdfExportService.downloadReport(project);
+      const plotImage = await this.captureProfilePlot();
+      await this.pdfExportService.downloadReport(project, plotImage);
       this.exportStatus.set('PDF erfolgreich exportiert!');
       this.lastExportType.set('pdf');
     } catch (error) {
@@ -121,6 +123,26 @@ export class ExportPanel {
    */
   hasCalculation(): boolean {
     return this.project()?.calculationResult !== null && this.project()?.calculationResult !== undefined;
+  }
+
+  /**
+   * Capture the profile plot as an image for PDF export
+   */
+  private async captureProfilePlot(): Promise<string | null> {
+    const element = document.getElementById('profile-chart-export');
+    if (!element) return null;
+
+    try {
+      const canvas = await html2canvas(element, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true
+      });
+      return canvas.toDataURL('image/png');
+    } catch (error) {
+      console.warn('Plot capture failed:', error);
+      return null;
+    }
   }
 
   /**
