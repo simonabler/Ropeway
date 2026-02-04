@@ -93,6 +93,8 @@ export function checkCableCapacity(
   material: CableMaterial = 'steel',
   customBreakingStrengthMPa?: number
 ): CableCapacityCheck {
+  const strengthUsed = customBreakingStrengthMPa ?? MATERIAL_STRENGTH[material];
+
   const maxAllowedKN = calculateMaxAllowedTension(
     diameterMm,
     safetyFactor,
@@ -110,6 +112,8 @@ export function checkCableCapacity(
 
   return {
     cableDiameterMm: diameterMm,
+    breakingStrengthNPerMm2: Math.round(strengthUsed * 10) / 10,
+    safetyFactor: Math.round(safetyFactor * 10) / 10,
     maxAllowedTensionKN: Math.round(maxAllowedKN * 10) / 10,
     actualMaxTensionKN: Math.round(actualTensionKN * 10) / 10,
     utilizationPercent: Math.round(utilizationPercent * 10) / 10,

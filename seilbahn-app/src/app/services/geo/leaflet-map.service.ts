@@ -12,19 +12,19 @@ import { GeoPoint } from '../../models';
 export class LeafletMapService {
   private map: L.Map | null = null;
   private startMarker: L.Marker | null = null;
-  private endMarker: L.Marker | null = null;
-  private routeLine: L.Polyline | null = null;
-  private azimuthLine: L.Polyline | null = null;
+  private directionMarker: L.Marker | null = null;
+  private directionLine: L.Polyline | null = null;
 
   // Signals for state
   readonly isInitialized = signal(false);
   readonly startPoint = signal<GeoPoint | null>(null);
-  readonly endPoint = signal<GeoPoint | null>(null);
   readonly azimuth = signal<number>(0);
 
   // Default map center (Switzerland - Bernese Alps area)
   private readonly defaultCenter: L.LatLngExpression = [46.6, 8.0];
   private readonly defaultZoom = 10;
+
+  private readonly directionHandleDistanceM = 200;
 
   // Marker icons
   private readonly startIcon = L.divIcon({
@@ -34,11 +34,11 @@ export class LeafletMapService {
     iconAnchor: [20, 40]
   });
 
-  private readonly endIcon = L.divIcon({
-    className: 'custom-marker end-marker',
-    html: '<div class="marker-inner">E</div>',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40]
+  private readonly directionIcon = L.divIcon({
+    className: 'custom-marker direction-marker',
+    html: '<div class="marker-inner">R</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
   });
 
   /**
@@ -65,13 +65,6 @@ export class LeafletMapService {
       maxZoom: 19
     }).addTo(this.map);
 
-    // Add Swiss topo layer (swisstopo)
-    // Commented out - requires API key for production
-    // L.tileLayer('https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg', {
-    //   attribution: '&copy; swisstopo',
-    //   maxZoom: 18
-    // }).addTo(this.map);
-
     // Mobile-friendly: disable scroll zoom, use buttons only
     this.map.scrollWheelZoom.disable();
 
@@ -92,15 +85,14 @@ export class LeafletMapService {
       this.map.remove();
       this.map = null;
       this.startMarker = null;
-      this.endMarker = null;
-      this.routeLine = null;
-      this.azimuthLine = null;
+      this.directionMarker = null;
+      this.directionLine = null;
       this.isInitialized.set(false);
     }
   }
 
   /**
-   * Handle map click - set start or end point
+   * Handle map click - set start or direction point
    */
   private handleMapClick(latlng: L.LatLng): void {
     const point: GeoPoint = {
@@ -108,19 +100,10 @@ export class LeafletMapService {
       lng: latlng.lng
     };
 
-    // If no start point, set start
-    // If start exists but no end, set end
-    // If both exist, reset and set new start
     if (!this.startPoint()) {
       this.setStartPoint(point);
-    } else if (!this.endPoint()) {
-      this.setEndPoint(point);
-      this.updateRouteLine();
-      this.calculateAzimuth();
     } else {
-      // Reset both
-      this.clearPoints();
-      this.setStartPoint(point);
+      this.setDirectionPoint(point, true);
     }
   }
 
@@ -144,93 +127,100 @@ export class LeafletMapService {
       }).addTo(this.map);
 
       // Handle drag
-      this.startMarker.on('dragend', () => {
+      this.startMarker.on('drag', () => {
         const pos = this.startMarker?.getLatLng();
         if (pos) {
           this.startPoint.set({ lat: pos.lat, lng: pos.lng });
-          this.updateRouteLine();
-          this.calculateAzimuth();
+          this.updateDirectionHandleFromAzimuth();
         }
       });
 
       // Add popup
       this.startMarker.bindPopup('Startpunkt (Talstation)');
     }
+
+    this.updateDirectionHandleFromAzimuth();
   }
 
   /**
-   * Set end point
+   * Set direction point (handle)
    */
-  setEndPoint(point: GeoPoint): void {
-    this.endPoint.set(point);
-
-    if (this.map) {
-      // Remove existing marker
-      if (this.endMarker) {
-        this.endMarker.remove();
-      }
-
-      // Add new marker
-      this.endMarker = L.marker([point.lat, point.lng], {
-        icon: this.endIcon,
-        draggable: true,
-        title: 'Endpunkt'
-      }).addTo(this.map);
-
-      // Handle drag
-      this.endMarker.on('dragend', () => {
-        const pos = this.endMarker?.getLatLng();
-        if (pos) {
-          this.endPoint.set({ lat: pos.lat, lng: pos.lng });
-          this.updateRouteLine();
-          this.calculateAzimuth();
-        }
-      });
-
-      // Add popup
-      this.endMarker.bindPopup('Endpunkt (Bergstation)');
-    }
-  }
-
-  /**
-   * Update route line between points
-   */
-  private updateRouteLine(): void {
+  private setDirectionPoint(point: GeoPoint, updateAzimuth: boolean): void {
     if (!this.map) return;
 
-    // Remove existing line
-    if (this.routeLine) {
-      this.routeLine.remove();
-    }
-
     const start = this.startPoint();
-    const end = this.endPoint();
-
-    if (start && end) {
-      this.routeLine = L.polyline(
-        [[start.lat, start.lng], [end.lat, end.lng]],
-        {
-          color: '#2196F3',
-          weight: 3,
-          opacity: 0.8,
-          dashArray: '10, 5'
-        }
-      ).addTo(this.map);
+    if (start && updateAzimuth) {
+      const azimuth = this.calculateBearing(start, point);
+      this.azimuth.set(azimuth);
     }
+
+    if (this.directionMarker) {
+      this.directionMarker.setLatLng([point.lat, point.lng]);
+    } else {
+      this.directionMarker = L.marker([point.lat, point.lng], {
+        icon: this.directionIcon,
+        draggable: true,
+        title: 'Richtung'
+      }).addTo(this.map);
+
+      this.directionMarker.on('drag', () => {
+        const pos = this.directionMarker?.getLatLng();
+        const startPoint = this.startPoint();
+        if (pos && startPoint) {
+          const azimuth = this.calculateBearing(startPoint, { lat: pos.lat, lng: pos.lng });
+          this.azimuth.set(azimuth);
+          this.updateDirectionLine();
+        }
+      });
+    }
+
+    this.updateDirectionLine();
   }
 
   /**
-   * Calculate azimuth (bearing) from start to end
+   * Update direction handle based on current azimuth
    */
-  private calculateAzimuth(): void {
+  private updateDirectionHandleFromAzimuth(): void {
     const start = this.startPoint();
-    const end = this.endPoint();
+    if (!start) return;
 
-    if (start && end) {
-      const azimuth = this.calculateBearing(start, end);
-      this.azimuth.set(azimuth);
-      this.drawAzimuthIndicator(azimuth);
+    const az = this.azimuth();
+    const handlePoint = this.calculateDestination(start, az, this.directionHandleDistanceM);
+    this.setDirectionPoint(handlePoint, false);
+  }
+
+  /**
+   * Update direction line between start and handle
+   */
+  private updateDirectionLine(): void {
+    if (!this.map) return;
+
+    const start = this.startPoint();
+    const direction = this.getDirectionPoint();
+    if (!start || !direction) return;
+
+    const latlngs: L.LatLngExpression[] = [
+      [start.lat, start.lng],
+      [direction.lat, direction.lng]
+    ];
+
+    if (this.directionLine) {
+      this.directionLine.setLatLngs(latlngs);
+      return;
     }
+
+    this.directionLine = L.polyline(latlngs, {
+      color: '#FF9800',
+      weight: 3,
+      opacity: 0.8,
+      dashArray: '8, 4'
+    }).addTo(this.map);
+  }
+
+  private getDirectionPoint(): GeoPoint | null {
+    if (!this.directionMarker) return null;
+    const pos = this.directionMarker.getLatLng();
+    return { lat: pos.lat, lng: pos.lng };
   }
 
   /**
@@ -253,11 +243,28 @@ export class LeafletMapService {
   }
 
   /**
-   * Draw azimuth indicator arrow
+   * Calculate destination point from start, bearing and distance
    */
-  private drawAzimuthIndicator(azimuth: number): void {
-    // Azimuth is already shown by the route line
-    // Additional indicator could be added here if needed
+  private calculateDestination(from: GeoPoint, bearingDeg: number, distanceM: number): GeoPoint {
+    const R = 6371000;
+    const bearing = this.toRadians(bearingDeg);
+    const lat1 = this.toRadians(from.lat);
+    const lng1 = this.toRadians(from.lng);
+
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(distanceM / R) +
+      Math.cos(lat1) * Math.sin(distanceM / R) * Math.cos(bearing)
+    );
+
+    const lng2 = lng1 + Math.atan2(
+      Math.sin(bearing) * Math.sin(distanceM / R) * Math.cos(lat1),
+      Math.cos(distanceM / R) - Math.sin(lat1) * Math.sin(lat2)
+    );
+
+    return {
+      lat: this.toDegrees(lat2),
+      lng: this.toDegrees(lng2)
+    };
   }
 
   /**
@@ -268,21 +275,16 @@ export class LeafletMapService {
       this.startMarker.remove();
       this.startMarker = null;
     }
-    if (this.endMarker) {
-      this.endMarker.remove();
-      this.endMarker = null;
+    if (this.directionMarker) {
+      this.directionMarker.remove();
+      this.directionMarker = null;
     }
-    if (this.routeLine) {
-      this.routeLine.remove();
-      this.routeLine = null;
-    }
-    if (this.azimuthLine) {
-      this.azimuthLine.remove();
-      this.azimuthLine = null;
+    if (this.directionLine) {
+      this.directionLine.remove();
+      this.directionLine = null;
     }
 
     this.startPoint.set(null);
-    this.endPoint.set(null);
     this.azimuth.set(0);
   }
 
@@ -293,47 +295,6 @@ export class LeafletMapService {
     if (this.map) {
       this.map.setView([point.lat, point.lng], zoom ?? this.map.getZoom());
     }
-  }
-
-  /**
-   * Fit map to show both points
-   */
-  fitBounds(): void {
-    const start = this.startPoint();
-    const end = this.endPoint();
-
-    if (this.map && start && end) {
-      const bounds = L.latLngBounds(
-        [start.lat, start.lng],
-        [end.lat, end.lng]
-      );
-      this.map.fitBounds(bounds, { padding: [50, 50] });
-    }
-  }
-
-  /**
-   * Calculate approximate distance between points (meters)
-   */
-  getDistance(): number {
-    const start = this.startPoint();
-    const end = this.endPoint();
-
-    if (start && end) {
-      const R = 6371000; // Earth radius in meters
-      const lat1 = this.toRadians(start.lat);
-      const lat2 = this.toRadians(end.lat);
-      const dLat = this.toRadians(end.lat - start.lat);
-      const dLng = this.toRadians(end.lng - start.lng);
-
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1) * Math.cos(lat2) *
-                Math.sin(dLng / 2) * Math.sin(dLng / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-      return Math.round(R * c);
-    }
-
-    return 0;
   }
 
   /**

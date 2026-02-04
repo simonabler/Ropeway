@@ -6,11 +6,10 @@
   @if (showInstructions()) {
     <div class="instructions-overlay" (click)="hideInstructions()">
       <div class="instructions-card">
-        <h3>📍 Punkte setzen</h3>
+        <h3>?? Start & Richtung</h3>
         <ol>
-          <li><strong>Tippen</strong> auf Karte = Startpunkt (Tal)</li>
-          <li><strong>Nochmal tippen</strong> = Endpunkt (Berg)</li>
-          <li><strong>Ziehen</strong> zum Verschieben</li>
+          <li><strong>Tippen</strong> auf Karte = Startpunkt</li>
+          <li><strong>Pfeil ziehen</strong> = Richtung (Azimut)</li>
         </ol>
         <button class="btn-dismiss" (click)="hideInstructions()">Verstanden</button>
       </div>
@@ -40,16 +39,6 @@
       title="GPS als Startpunkt">
       🎯
     </button>
-
-    <!-- Fit to Route -->
-    @if (startPoint() && endPoint()) {
-      <button
-        class="control-btn"
-        (click)="fitToRoute()"
-        title="Route anzeigen">
-        🔍
-      </button>
-    }
 
     <!-- Clear -->
     @if (startPoint()) {
@@ -87,25 +76,19 @@
       </div>
     }
 
-    <!-- End Point -->
-    @if (endPoint(); as end) {
+    <!-- Profile Length -->
+    @if (profileLengthMeters > 0) {
       <div class="info-item">
-        <span class="label">Ende</span>
-        <span class="value">{{ end.lat.toFixed(5) }}, {{ end.lng.toFixed(5) }}</span>
+        <span class="label">Profil-L?nge</span>
+        <span class="value highlight">{{ getProfileLengthFormatted() }}</span>
       </div>
     }
 
-    <!-- Distance & Azimuth -->
-    @if (startPoint() && endPoint()) {
-      <div class="route-info">
-        <div class="info-item">
-          <span class="label">Distanz</span>
-          <span class="value highlight">{{ getDistanceFormatted() }}</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Azimut</span>
-          <span class="value highlight">{{ azimuth() }}° {{ getAzimuthDirection() }}</span>
-        </div>
+    <!-- Azimuth -->
+    @if (startPoint()) {
+      <div class="info-item">
+        <span class="label">Richtung</span>
+        <span class="value highlight">{{ azimuth() }}? {{ getAzimuthDirection() }}</span>
       </div>
     }
   </div>
@@ -115,9 +98,9 @@
     <div class="help-text">
       Tippen Sie auf die Karte, um den <strong>Startpunkt</strong> zu setzen
     </div>
-  } @else if (!endPoint()) {
+  } @else {
     <div class="help-text">
-      Tippen Sie auf die Karte, um den <strong>Endpunkt</strong> zu setzen
+      Ziehen Sie den <strong>Richtungs-Pfeil</strong>, um die Richtung festzulegen
     </div>
   }
 </div>

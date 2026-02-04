@@ -126,6 +126,7 @@ export class CablePresetService {
       allowedSag: preset.carrier.sagFM,
       // New cable properties
       cableDiameterMm: preset.cable.diameterMm,
+      minBreakingStrengthNPerMm2: preset.cable.breakingStrengthNPerMm2 || this.deriveStrengthFromBreakingLoad(preset.cable.diameterMm, preset.cable.breakingStrengthKN),
       cableMaterial: preset.cable.material,
       cableBreakingStrengthKN: preset.cable.breakingStrengthKN
     };
@@ -199,6 +200,15 @@ export class CablePresetService {
       });
     }
 
+    const presetStrength = preset.cable.breakingStrengthNPerMm2 || this.deriveStrengthFromBreakingLoad(preset.cable.diameterMm, preset.cable.breakingStrengthKN);
+    if (cable.minBreakingStrengthNPerMm2 && Math.abs(cable.minBreakingStrengthNPerMm2 - presetStrength) > 0.1) {
+      diffs.push({
+        field: 'breakingStrengthNPerMm2',
+        configValue: cable.minBreakingStrengthNPerMm2,
+        presetValue: presetStrength
+      });
+    }
+
     return {
       isModified: diffs.length > 0,
       diffs
@@ -219,6 +229,7 @@ export class CablePresetService {
       cable: {
         diameterMm: cable.cableDiameterMm,
         breakingStrengthKN: cable.cableBreakingStrengthKN || this.calculateBreakingStrength(cable.cableDiameterMm, cable.cableMaterial),
+        breakingStrengthNPerMm2: cable.minBreakingStrengthNPerMm2 || 1960,
         material: cable.cableMaterial
       },
       carrier: {
@@ -241,9 +252,19 @@ export class CablePresetService {
    * Calculate breaking strength from diameter and material
    */
   private calculateBreakingStrength(diameterMm: number, material: 'steel' | 'synthetic'): number {
-    const materialStrength = material === 'steel' ? 1770 : 1200; // N/mm²
+    const materialStrength = material === 'steel' ? 1960 : 1200; // N/mm^2
     const areaMm2 = Math.PI * Math.pow(diameterMm / 2, 2);
     return (areaMm2 * materialStrength) / 1000; // Convert to kN
+  }
+
+  /**
+   * Derive breaking strength (N/mm^2) from breaking load (kN) and diameter
+   */
+  private deriveStrengthFromBreakingLoad(diameterMm: number, breakingStrengthKN?: number): number {
+    if (!breakingStrengthKN || diameterMm <= 0) return 0;
+    const areaMm2 = Math.PI * Math.pow(diameterMm / 2, 2);
+    if (areaMm2 <= 0) return 0;
+    return (breakingStrengthKN * 1000) / areaMm2;
   }
 
   /**

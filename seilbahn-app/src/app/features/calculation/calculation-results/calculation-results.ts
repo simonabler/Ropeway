@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CalculationResult, CalculationWarning, SpanResult } from '../../../models';
@@ -30,6 +30,9 @@ export class CalculationResults {
   isCalculating = signal(false);
   lastCalculation = signal<Date | null>(null);
 
+  private autoCalcTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastAutoCalcKey = '';
+
   constructor(
     private projectStateService: ProjectStateService,
     private cableCalculatorService: CableCalculatorService
@@ -38,6 +41,20 @@ export class CalculationResults {
     this._terrain = toSignal(this.projectStateService.terrain$, { initialValue: [] });
     this._supports = toSignal(this.projectStateService.supports$, { initialValue: [] });
     this._calculationResult = toSignal(this.projectStateService.calculation$, { initialValue: null });
+
+    effect(() => {
+      const project = this._project();
+      const terrain = this._terrain();
+      const supports = this._supports();
+
+      if (!project || terrain.length === 0) return;
+
+      const key = this.buildAutoCalcKey(project, terrain, supports);
+      if (key === this.lastAutoCalcKey) return;
+      this.lastAutoCalcKey = key;
+
+      this.scheduleAutoCalculation();
+    });
   }
 
   get project() {
@@ -118,12 +135,16 @@ export class CalculationResults {
           maxHorizontalForce: 0,
           cableCapacityCheck: {
             cableDiameterMm: 0,
+            breakingStrengthNPerMm2: 0,
+            safetyFactor: 0,
             maxAllowedTensionKN: 0,
             actualMaxTensionKN: 0,
             utilizationPercent: 0,
             status: 'fail',
             safetyMarginPercent: 0
           },
+          anchorForces: [],
+          supportForces: [],
           warnings: [{
             severity: 'error',
             message: `Berechnungsfehler: ${error}`
@@ -166,6 +187,29 @@ export class CalculationResults {
     return this.result.spans.reduce((min, span) =>
       span.minClearance < min.minClearance ? span : min
     );
+  }
+
+  private scheduleAutoCalculation(): void {
+    if (this.isCalculating()) return;
+    if (this.autoCalcTimer) clearTimeout(this.autoCalcTimer);
+    this.autoCalcTimer = setTimeout(() => this.calculate(), 400);
+  }
+
+  private buildAutoCalcKey(project: any, terrain: any[], supports: any[]): string {
+    const cable = project.cableConfig || {};
+    const terrainKey = terrain.map(t => `${t.stationLength}:${t.terrainHeight}`).join('|');
+    const supportsKey = supports.map(s => `${s.stationLength}:${s.topElevation}:${s.supportHeight}`).join('|');
+    const cableKey = [
+      cable.cableWeightPerMeter,
+      cable.maxLoad,
+      cable.safetyFactor,
+      cable.minGroundClearance,
+      cable.allowedSag,
+      cable.cableDiameterMm,
+      cable.minBreakingStrengthNPerMm2,
+      cable.cableMaterial
+    ].join('|');
+    return `${terrainKey}__${supportsKey}__${cableKey}`;
   }
 
   /**

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, effect, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, effect, Output, EventEmitter, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LeafletMapService } from '../../../services/geo/leaflet-map.service';
@@ -7,7 +7,7 @@ import { GeoPoint } from '../../../models';
 
 /**
  * Map Container Component
- * Leaflet-based map for start/end point selection
+ * Leaflet-based map for start point and direction selection
  */
 @Component({
   selector: 'app-map-container',
@@ -17,11 +17,11 @@ import { GeoPoint } from '../../../models';
   styleUrl: './map-container.scss'
 })
 export class MapContainer implements OnInit, OnDestroy {
-  @Output() pointsChanged = new EventEmitter<{ start: GeoPoint | null; end: GeoPoint | null; azimuth: number }>();
+  @Output() pointsChanged = new EventEmitter<{ start: GeoPoint | null; azimuth: number }>();
+  @Input() profileLengthMeters = 0;
 
   // Signals from services
   readonly startPoint;
-  readonly endPoint;
   readonly azimuth;
   readonly gpsPosition;
   readonly gpsAccuracy;
@@ -37,7 +37,6 @@ export class MapContainer implements OnInit, OnDestroy {
     private geoService: GeolocationService
   ) {
     this.startPoint = this.mapService.startPoint;
-    this.endPoint = this.mapService.endPoint;
     this.azimuth = this.mapService.azimuth;
     this.gpsPosition = this.geoService.currentPosition;
     this.gpsAccuracy = this.geoService.accuracy;
@@ -47,9 +46,8 @@ export class MapContainer implements OnInit, OnDestroy {
     // Emit changes when points change
     effect(() => {
       const start = this.startPoint();
-      const end = this.endPoint();
       const az = this.azimuth();
-      this.pointsChanged.emit({ start, end, azimuth: az });
+      this.pointsChanged.emit({ start, azimuth: az });
     });
   }
 
@@ -119,24 +117,6 @@ export class MapContainer implements OnInit, OnDestroy {
   }
 
   /**
-   * Fit map to show both points
-   */
-  fitToRoute(): void {
-    this.mapService.fitBounds();
-  }
-
-  /**
-   * Get formatted distance
-   */
-  getDistanceFormatted(): string {
-    const distance = this.mapService.getDistance();
-    if (distance >= 1000) {
-      return `${(distance / 1000).toFixed(2)} km`;
-    }
-    return `${distance} m`;
-  }
-
-  /**
    * Get azimuth direction label
    */
   getAzimuthDirection(): string {
@@ -150,6 +130,17 @@ export class MapContainer implements OnInit, OnDestroy {
     if (az >= 247.5 && az < 292.5) return 'W';
     if (az >= 292.5 && az < 337.5) return 'NW';
     return '';
+  }
+
+  /**
+   * Format profile length
+   */
+  getProfileLengthFormatted(): string {
+    const length = this.profileLengthMeters || 0;
+    if (length >= 1000) {
+      return `${(length / 1000).toFixed(2)} km`;
+    }
+    return `${Math.round(length)} m`;
   }
 
   /**

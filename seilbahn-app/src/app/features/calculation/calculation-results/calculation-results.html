@@ -97,6 +97,14 @@
                   <span class="value">{{ result.cableCapacityCheck.cableDiameterMm }} mm</span>
                 </div>
                 <div class="capacity-row">
+                  <span class="label">Festigkeitsklasse:</span>
+                  <span class="value">{{ result.cableCapacityCheck.breakingStrengthNPerMm2 }} N/mm^2</span>
+                </div>
+                <div class="capacity-row">
+                  <span class="label">Sicherheitsfaktor:</span>
+                  <span class="value">{{ result.cableCapacityCheck.safetyFactor }}</span>
+                </div>
+                <div class="capacity-row">
                   <span class="label">Zulässige Last:</span>
                   <span class="value">{{ result.cableCapacityCheck.maxAllowedTensionKN }} kN</span>
                 </div>
@@ -125,6 +133,43 @@
               </div>
             </div>
           }
+
+          <!-- Anchor Forces -->
+          @if (result.anchorForces && result.anchorForces.length > 0) {
+            <div class="anchor-forces">
+              <h4>Ankerkr?fte</h4>
+              <div class="force-grid">
+                @for (a of result.anchorForces; track a.type) {
+                  <div class="force-card">
+                    <div class="force-title">{{ a.type === 'start' ? 'Tal-Anker' : 'Berg-Anker' }}</div>
+                    <div class="force-row"><span class="label">H:</span><span class="value">{{ a.horizontal.toFixed(1) }} kN</span></div>
+                    <div class="force-row"><span class="label">V:</span><span class="value">{{ a.vertical.toFixed(1) }} kN</span></div>
+                    <div class="force-row"><span class="label">Resultierend:</span><span class="value">{{ a.resultant.toFixed(1) }} kN</span></div>
+                    <div class="force-row"><span class="label">Winkel:</span><span class="value">{{ a.angle.toFixed(1) }}?</span></div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Support Forces -->
+          @if (result.supportForces && result.supportForces.length > 0) {
+            <div class="support-forces">
+              <h4>St?tzenauflagen</h4>
+              <div class="force-grid">
+                @for (s of result.supportForces; track s.supportId) {
+                  <div class="force-card">
+                    <div class="force-title">St?tze #{{ s.supportNumber }} ({{ s.stationLength.toFixed(1) }} m)</div>
+                    <div class="force-row"><span class="label">H:</span><span class="value">{{ s.horizontal.toFixed(1) }} kN</span></div>
+                    <div class="force-row"><span class="label">V:</span><span class="value">{{ s.vertical.toFixed(1) }} kN</span></div>
+                    <div class="force-row"><span class="label">Resultierend:</span><span class="value">{{ s.resultant.toFixed(1) }} kN</span></div>
+                    <div class="force-row"><span class="label">Winkel:</span><span class="value">{{ s.angle.toFixed(1) }}?</span></div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
 
           <!-- Critical Clearance -->
           @if (getCriticalSpan(); as critical) {

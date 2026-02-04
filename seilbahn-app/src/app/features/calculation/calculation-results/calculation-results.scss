@@ -316,6 +316,55 @@
   }
 }
 
+
+// Anchor + Support Forces
+.anchor-forces,
+.support-forces {
+  margin-bottom: $spacing-lg;
+
+  h4 {
+    margin: 0 0 $spacing-sm 0;
+    font-size: $font-size-base;
+    font-weight: 600;
+    color: $gray-700;
+  }
+}
+
+.force-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: $spacing-sm;
+}
+
+.force-card {
+  background: $gray-50;
+  border-radius: $border-radius-md;
+  padding: $spacing-md;
+  border: 1px solid $gray-200;
+
+  .force-title {
+    font-weight: 600;
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+  }
+
+  .force-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: $font-size-sm;
+    padding: 2px 0;
+
+    .label {
+      color: $gray-600;
+    }
+
+    .value {
+      font-weight: 600;
+      color: $gray-900;
+    }
+  }
+}
+
 // Cable Capacity Check
 .capacity-check {
   background: $gray-50;

@@ -122,6 +122,7 @@ export class ProjectStateService {
         safetyFactor: 5,
         minGroundClearance: 2,
         cableDiameterMm: 16,
+        minBreakingStrengthNPerMm2: 1960,
         cableMaterial: 'steel'
       }
     };

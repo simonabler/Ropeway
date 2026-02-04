@@ -14,6 +14,10 @@ export interface CalculationResult {
   // Cable capacity check (replaces estimatedCableDiameter)
   cableCapacityCheck: CableCapacityCheck;
 
+  // Force results
+  anchorForces: AnchorForceResult[];
+  supportForces: SupportForceResult[];
+
   warnings: CalculationWarning[];
   isValid: boolean;
 }
@@ -24,6 +28,8 @@ export interface CalculationResult {
  */
 export interface CableCapacityCheck {
   cableDiameterMm: number;               // Input: user-selected cable diameter
+  breakingStrengthNPerMm2: number;       // Used breaking strength
+  safetyFactor: number;                  // Used safety factor
   maxAllowedTensionKN: number;           // Calculated from diameter + safety factor
   actualMaxTensionKN: number;            // From cable calculation
   utilizationPercent: number;            // (actual / allowed) * 100
@@ -35,6 +41,32 @@ export interface CableCapacityCheck {
  * Cable Capacity Status
  */
 export type CableCapacityStatus = 'ok' | 'warning' | 'fail';
+
+/**
+ * Force Result Vector (kN)
+ */
+export interface ForceVectorResult {
+  horizontal: number;                    // kN
+  vertical: number;                      // kN
+  resultant: number;                     // kN
+  angle: number;                         // degrees
+}
+
+/**
+ * Anchor Force Result
+ */
+export interface AnchorForceResult extends ForceVectorResult {
+  type: 'start' | 'end';
+}
+
+/**
+ * Support Force Result
+ */
+export interface SupportForceResult extends ForceVectorResult {
+  supportId: string;
+  supportNumber: number;
+  stationLength: number;
+}
 
 /**
  * Cable Point (for visualization)

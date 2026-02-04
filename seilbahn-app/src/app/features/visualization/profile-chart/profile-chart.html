@@ -4,17 +4,17 @@
     <h3>Profil-Ansicht</h3>
     <div class="chart-controls">
       @if (isZoomed()) {
-        <button class="btn-reset-zoom" (click)="resetZoom()" title="Zoom zurücksetzen">
-          <span class="icon">⟲</span>
+        <button class="btn-reset-zoom" (click)="resetZoom()" title="Zoom zur?cksetzen">
+          <span class="icon">?</span>
           <span class="label">Reset</span>
         </button>
       }
       <button class="btn-fullscreen" (click)="toggleFullscreen()" [title]="isFullscreen() ? 'Vollbild beenden' : 'Vollbild'">
         @if (isFullscreen()) {
-          <span class="icon">⛶</span>
+          <span class="icon">?</span>
           <span class="label">Beenden</span>
         } @else {
-          <span class="icon">⛶</span>
+          <span class="icon">?</span>
           <span class="label">Vollbild</span>
         }
       </button>
@@ -76,7 +76,7 @@
         <div class="control-group">
           <label class="control-label">
             <span class="label-text">Lastposition</span>
-            <span class="label-value">{{ loadPositionPercent() }}%</span>
+            <span class="label-value">{{ loadPositionPercent() }}% ({{ getLoadPosition().toFixed(1) }} m)</span>
           </label>
           <input
             type="range"
@@ -89,26 +89,6 @@
           <div class="slider-labels">
             <span>Anfang</span>
             <span>Ende</span>
-          </div>
-        </div>
-
-        <!-- Cable Weight -->
-        <div class="control-group">
-          <label class="control-label">
-            <span class="label-text">Seilgewicht</span>
-            <span class="label-value">{{ (cableWeight() / 9.81).toFixed(1) }} kg/m</span>
-          </label>
-          <input
-            type="range"
-            class="slider"
-            min="5"
-            max="50"
-            [value]="cableWeight()"
-            (input)="onCableWeightChange($any($event.target).valueAsNumber)"
-          />
-          <div class="slider-labels">
-            <span>0.5 kg/m</span>
-            <span>5 kg/m</span>
           </div>
         </div>
       </div>

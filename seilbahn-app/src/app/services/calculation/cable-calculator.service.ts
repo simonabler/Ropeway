@@ -4,7 +4,9 @@ import {
   CalculationResult,
   SpanResult,
   CalculationWarning,
-  CablePoint
+  CablePoint,
+  AnchorForceResult,
+  SupportForceResult
 } from '../../models';
 import { calculateSpanGeometries } from './engine/geometry/span-geometry';
 import { calculateParabolicCable, ParabolicResult } from './engine/physics/parabolic-approximation';
@@ -128,14 +130,18 @@ export class CableCalculatorService {
     const maxHorizontalForce = Math.max(...spans.map(s => s.horizontalForce));
 
     // Check cable capacity (replaces estimated diameter)
+    const customStrength = project.cableConfig.minBreakingStrengthNPerMm2
+      ? project.cableConfig.minBreakingStrengthNPerMm2
+      : project.cableConfig.cableBreakingStrengthKN
+        ? project.cableConfig.cableBreakingStrengthKN * 1000 / this.calculateCableArea(project.cableConfig.cableDiameterMm)
+        : undefined;
+
     const capacityCheck = checkCableCapacity(
       project.cableConfig.cableDiameterMm,
       maxTension,
       project.cableConfig.safetyFactor,
       project.cableConfig.cableMaterial,
-      project.cableConfig.cableBreakingStrengthKN
-        ? project.cableConfig.cableBreakingStrengthKN * 1000 / this.calculateCableArea(project.cableConfig.cableDiameterMm)
-        : undefined
+      customStrength
     );
 
     // Add capacity check result as warning/info
@@ -145,6 +151,9 @@ export class CableCalculatorService {
       message: `${statusText} (Auslastung: ${capacityCheck.utilizationPercent.toFixed(0)}%, T_max=${maxTension.toFixed(1)}kN, zulässig=${capacityCheck.maxAllowedTensionKN.toFixed(1)}kN)`
     });
 
+    const anchorForces = this.calculateAnchorForces(spans);
+    const supportForces = this.calculateSupportForces(spans, project.supports);
+
     return {
       timestamp: new Date(),
       method: 'parabolic',
@@ -153,6 +162,8 @@ export class CableCalculatorService {
       maxTension,
       maxHorizontalForce,
       cableCapacityCheck: capacityCheck,
+      anchorForces,
+      supportForces,
       warnings,
       isValid: capacityCheck.status !== 'fail'
     };
@@ -179,15 +190,80 @@ export class CableCalculatorService {
       maxHorizontalForce: 0,
       cableCapacityCheck: {
         cableDiameterMm: 0,
+        breakingStrengthNPerMm2: 0,
+        safetyFactor: 0,
         maxAllowedTensionKN: 0,
         actualMaxTensionKN: 0,
         utilizationPercent: 0,
         status: 'fail',
         safetyMarginPercent: 0
       },
+      anchorForces: [],
+      supportForces: [],
       warnings,
       isValid: false
     };
+  }
+
+
+
+  private calculateAnchorForces(spans: SpanResult[]): AnchorForceResult[] {
+    if (spans.length === 0) return [];
+
+    const startSpan = spans[0];
+    const endSpan = spans[spans.length - 1];
+
+    const build = (type: 'start' | 'end', horizontal: number, vertical: number): AnchorForceResult => {
+      const h = Math.abs(horizontal);
+      const v = Math.abs(vertical);
+      const resultant = Math.sqrt(h * h + v * v);
+      const angle = Math.atan2(v, h) * 180 / Math.PI;
+      return {
+        type,
+        horizontal: h,
+        vertical: v,
+        resultant,
+        angle
+      };
+    };
+
+    return [
+      build('start', startSpan.horizontalForce, startSpan.verticalForceStart),
+      build('end', endSpan.horizontalForce, endSpan.verticalForceEnd)
+    ];
+  }
+
+  private calculateSupportForces(spans: SpanResult[], supports: Array<{ id: string; supportNumber: number; stationLength: number }>): SupportForceResult[] {
+    if (supports.length === 0 || spans.length === 0) return [];
+
+    const supportForces: SupportForceResult[] = [];
+
+    for (const support of supports) {
+      const leftSpan = spans.find(s => s.toSupport === support.id);
+      const rightSpan = spans.find(s => s.fromSupport === support.id);
+
+      const hLeft = leftSpan ? Math.abs(leftSpan.horizontalForce) : 0;
+      const hRight = rightSpan ? Math.abs(rightSpan.horizontalForce) : 0;
+      const vLeft = leftSpan ? Math.abs(leftSpan.verticalForceEnd) : 0;
+      const vRight = rightSpan ? Math.abs(rightSpan.verticalForceStart) : 0;
+
+      const horizontal = hLeft + hRight;
+      const vertical = vLeft + vRight;
+      const resultant = Math.sqrt(horizontal * horizontal + vertical * vertical);
+      const angle = Math.atan2(vertical, horizontal) * 180 / Math.PI;
+
+      supportForces.push({
+        supportId: support.id,
+        supportNumber: support.supportNumber,
+        stationLength: support.stationLength,
+        horizontal,
+        vertical,
+        resultant,
+        angle
+      });
+    }
+
+    return supportForces;
   }
 
   /**
@@ -224,6 +300,13 @@ export class CableCalculatorService {
       warnings.push({
         severity: 'error',
         message: 'Seildurchmesser muss angegeben werden.'
+      });
+    }
+
+    if (!project.cableConfig.minBreakingStrengthNPerMm2 || project.cableConfig.minBreakingStrengthNPerMm2 <= 0) {
+      warnings.push({
+        severity: 'error',
+        message: 'Festigkeitsklasse muss angegeben werden.'
       });
     }
 

@@ -45,6 +45,7 @@ export class CableConfig {
 
   // NEW: Cable physical properties
   cableDiameterMm = 16;       // Seildurchmesser mm
+  minBreakingStrengthNPerMm2 = 1960; // Festigkeitsklasse (N/mm^2)
   cableMaterial: CableMaterial = 'steel';  // Material
 
   // Standard cables for dropdown
@@ -92,6 +93,7 @@ export class CableConfig {
       this.sagMeters = config.allowedSag || 3;
       // NEW: Load cable diameter and material
       this.cableDiameterMm = config.cableDiameterMm || 16;
+      this.minBreakingStrengthNPerMm2 = config.minBreakingStrengthNPerMm2 || 1960;
       this.cableMaterial = config.cableMaterial || 'steel';
     }
 
@@ -119,6 +121,7 @@ export class CableConfig {
     this.minClearanceM = preset.limits.minClearanceM;
     // NEW: Apply cable diameter and material
     this.cableDiameterMm = preset.cable.diameterMm;
+    this.minBreakingStrengthNPerMm2 = preset.cable.breakingStrengthNPerMm2 || 1960;
     this.cableMaterial = preset.cable.material;
 
     // Save to project
@@ -171,6 +174,9 @@ export class CableConfig {
     if (this.cableDiameterMm !== preset.cable.diameterMm) {
       mods.push({ field: 'diameter', label: 'Seildurchmesser', current: this.cableDiameterMm, preset: preset.cable.diameterMm });
     }
+    if ((preset.cable.breakingStrengthNPerMm2 || 1960) != this.minBreakingStrengthNPerMm2) {
+      mods.push({ field: 'breaking', label: 'Festigkeitsklasse', current: this.minBreakingStrengthNPerMm2, preset: preset.cable.breakingStrengthNPerMm2 || 1960 });
+    }
 
     this.isModified.set(mods.length > 0);
     this.modifications.set(mods);
@@ -211,6 +217,9 @@ export class CableConfig {
     if (this.cableDiameterMm < 8 || this.cableDiameterMm > 40) {
       errs.push('Seildurchmesser: 8-40 mm');
     }
+    if (this.minBreakingStrengthNPerMm2 < 1000 || this.minBreakingStrengthNPerMm2 > 2200) {
+      errs.push('Festigkeitsklasse: 1000-2200 N/mm^2');
+    }
 
     this.errors.set(errs);
     return errs.length === 0;
@@ -231,6 +240,7 @@ export class CableConfig {
       allowedSag: this.sagMeters,
       // NEW: Cable physical properties
       cableDiameterMm: this.cableDiameterMm,
+      minBreakingStrengthNPerMm2: this.minBreakingStrengthNPerMm2,
       cableMaterial: this.cableMaterial
     };
 
@@ -393,6 +403,7 @@ export class CableConfig {
       minGroundClearance: this.minClearanceM,
       allowedSag: this.sagMeters,
       cableDiameterMm: this.cableDiameterMm,
+      minBreakingStrengthNPerMm2: this.minBreakingStrengthNPerMm2,
       cableMaterial: this.cableMaterial
     };
   }

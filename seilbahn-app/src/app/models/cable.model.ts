@@ -11,6 +11,7 @@ export interface CableConfiguration {
 
   // Cable properties (INPUT - fixed cable selection)
   cableDiameterMm: number;               // mm - user selects actual cable
+  minBreakingStrengthNPerMm2: number;    // N/mm^2 (default 1960, editable)
   cableMaterial: CableMaterial;          // steel or synthetic
   cableBreakingStrengthKN?: number;      // kN - optional override for breaking strength
 }
@@ -30,6 +31,6 @@ export const STANDARD_CABLE_DIAMETERS = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28,
  * Used to calculate max allowed tension from diameter
  */
 export const MATERIAL_STRENGTH: Record<CableMaterial, number> = {
-  steel: 1770,      // Standard steel rope ~1770 N/mm²
+  steel: 1960,      // Festigkeitsklasse 1960 N/mm^2
   synthetic: 1200   // Synthetic ropes vary, conservative estimate
 };

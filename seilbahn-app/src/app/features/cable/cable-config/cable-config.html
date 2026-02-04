@@ -68,6 +68,10 @@
           <span class="value">{{ cableDiameterMm }} mm ({{ cableMaterial === 'steel' ? 'Stahl' : 'Kunststoff' }})</span>
         </div>
         <div class="summary-row">
+          <span class="label">Festigkeitsklasse:</span>
+          <span class="value">{{ minBreakingStrengthNPerMm2 }} N/mm^2</span>
+        </div>
+        <div class="summary-row">
           <span class="label">Seilgewicht:</span>
           <span class="value">{{ cableWeightNPerM.toFixed(1) }} N/m</span>
         </div>
@@ -130,8 +134,28 @@
           </div>
         </div>
         @if (getSelectedCableInfo(); as cableInfo) {
-          <span class="hint">Bruchlast: ~{{ cableInfo.breakingStrength }} kN</span>
+          <span class="hint">Bruchlast: ~{{ cableInfo.breakingStrength }} kN ({{ minBreakingStrengthNPerMm2 }} N/mm^2)</span>
         }
+
+
+      <!-- Breaking Strength Class -->
+      <div class="input-group">
+        <label>Festigkeitsklasse [N/mm^2]</label>
+        <div class="numeric-input">
+          <button class="btn-adjust" (click)="minBreakingStrengthNPerMm2 = minBreakingStrengthNPerMm2 - 50; onValueChange()">-50</button>
+          <input
+            type="number"
+            [(ngModel)]="minBreakingStrengthNPerMm2"
+            (ngModelChange)="onValueChange()"
+            inputmode="numeric"
+            min="1000"
+            max="2200"
+            step="10"
+          />
+          <button class="btn-adjust" (click)="minBreakingStrengthNPerMm2 = minBreakingStrengthNPerMm2 + 50; onValueChange()">+50</button>
+        </div>
+        <span class="hint">Default: 1960 N/mm^2</span>
+      </div>
       </div>
 
       <!-- Material Type (NEW) -->

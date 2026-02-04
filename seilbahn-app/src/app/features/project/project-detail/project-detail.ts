@@ -66,9 +66,11 @@ export class ProjectDetail implements OnInit {
   /**
    * Handle map points changed
    */
-  onMapPointsChanged(event: { start: GeoPoint | null; end: GeoPoint | null; azimuth: number }): void {
+  onMapPointsChanged(event: { start: GeoPoint | null; azimuth: number }): void {
     if (event.start) {
       this.projectStateService.updateStartPointAndAzimuth(event.start, event.azimuth);
+    } else {
+      this.projectStateService.updateStartPointAndAzimuth({ lat: 0, lng: 0 }, 0);
     }
   }
 }

@@ -12,6 +12,7 @@ export interface CableParameterSet {
   cable: {
     diameterMm: number;                  // mm - fixed cable diameter
     breakingStrengthKN: number;          // kN - breaking load of the cable
+    breakingStrengthNPerMm2?: number;    // N/mm^2 (optional, default 1960)
     material: CableMaterial;             // steel or synthetic
   };
 

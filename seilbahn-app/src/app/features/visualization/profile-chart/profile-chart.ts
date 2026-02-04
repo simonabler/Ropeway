@@ -96,7 +96,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
   minTension = 5;
   maxTension = 50;
 
-  // Load position (0-100% of span)
+  // Load position (0-100% of total length)
   loadPositionPercent = signal(50);
 
   // Point load (N)
@@ -106,6 +106,8 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
   // Cable weight per meter (N/m)
   cableWeight = signal(15); // N/m (approx. 1.5 kg/m)
+  private lastProjectId: string | null = null;
+  private pointLoadDirty = false;
 
   // Display options
   showEmptyCable = signal(true);
@@ -138,7 +140,14 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       const project = this.projectStateService.currentProject;
       if (project) {
         this.cableWeight.set(project.cableConfig.cableWeightPerMeter * 9.81); // kg/m to N/m
-        this.pointLoad.set(project.cableConfig.maxLoad * 9.81); // kg to N
+        const projectId = project.id;
+        if (projectId !== this.lastProjectId) {
+          this.lastProjectId = projectId;
+          this.pointLoadDirty = false;
+          this.pointLoad.set(project.cableConfig.maxLoad * 9.81); // kg to N
+        } else if (!this.pointLoadDirty) {
+          this.pointLoad.set(project.cableConfig.maxLoad * 9.81); // kg to N
+        }
       }
 
       // Initialize chart when data becomes available and container exists
@@ -182,12 +191,8 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onPointLoadChange(value: number): void {
+    this.pointLoadDirty = true;
     this.pointLoad.set(value);
-    this.updateChart();
-  }
-
-  onCableWeightChange(value: number): void {
-    this.cableWeight.set(value);
     this.updateChart();
   }
 
@@ -459,15 +464,15 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
    * Uses parabolic approximation: y = 4f/L² * x * (L - x)
    */
   private calculateEmptyCable(): ChartPoint[] {
-    if (this.supports.length < 2) return [];
+    const allPoints = this.getSupportPoints();
+
+    if (allPoints.length < 2) return [];
 
     const points: ChartPoint[] = [];
     const H = this.horizontalTension() * 1000; // kN to N
     const w = this.cableWeight(); // N/m
 
     // For each span between supports
-    const allPoints = this.getSupportPoints();
-
     for (let i = 0; i < allPoints.length - 1; i++) {
       const start = allPoints[i];
       const end = allPoints[i + 1];
@@ -475,7 +480,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
       if (L <= 0) continue;
 
-      // Sag at midpoint: f = wL²/(8H)
+      // Sag at midpoint: f = w * L^2 / (8 * H)
       const f = (w * L * L) / (8 * H);
 
       // Height difference
@@ -504,7 +509,12 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
    * Point load creates V-shape deflection at load position
    */
   private calculateLoadedCable(): ChartPoint[] {
-    if (this.supports.length < 2) return [];
+    const allPoints = this.getSupportPoints();
+
+    if (allPoints.length < 2) {
+      this.criticalPoint.set(null);
+      return [];
+    }
 
     const points: ChartPoint[] = [];
     const H = this.horizontalTension() * 1000; // kN to N
@@ -512,7 +522,13 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     const P = this.pointLoad(); // N
     const loadPercent = this.loadPositionPercent() / 100;
 
-    const allPoints = this.getSupportPoints();
+    const totalLength = allPoints[allPoints.length - 1].x - allPoints[0].x;
+    if (totalLength <= 0) {
+      this.criticalPoint.set(null);
+      return [];
+    }
+
+    const loadX = allPoints[0].x + loadPercent * totalLength;
     let worstClearance = Infinity;
     let worstPoint: CriticalPoint | null = null;
 
@@ -523,17 +539,16 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
       if (L <= 0) continue;
 
-      // Position of point load within this span
-      const loadX = start.x + loadPercent * L;
-      const a = loadPercent * L; // distance from start
-      const b = L - a; // distance to end
+      const spanHasLoad = loadX >= start.x && loadX <= end.x;
+      const a = spanHasLoad ? loadX - start.x : 0;
+      const b = spanHasLoad ? end.x - loadX : 0;
 
       // Sag from distributed load
       const fDistributed = (w * L * L) / (8 * H);
 
       // Additional sag from point load at position a
-      // Maximum deflection from point load: δ = P*a*b / (H*L)
-      const fPointMax = (P * a * b) / (H * L);
+      // Maximum deflection from point load: delta = P * a * b / (H * L)
+      const fPointMax = spanHasLoad && a > 0 && b > 0 ? (P * a * b) / (H * L) : 0;
 
       // Height difference
       const dh = end.y - start.y;
@@ -548,14 +563,14 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
         // Distributed load sag (parabolic)
         const sagDistributed = 4 * fDistributed * (localX / L) * (1 - localX / L);
 
-        // Point load sag (triangular distribution)
+        // Point load sag (triangular distribution, max at load position)
         let sagPoint = 0;
-        if (localX <= a) {
-          // Left of load: linear increase
-          sagPoint = fPointMax * (localX / a) * (b / L) * 2;
-        } else {
-          // Right of load: linear decrease
-          sagPoint = fPointMax * ((L - localX) / b) * (a / L) * 2;
+        if (spanHasLoad && fPointMax > 0) {
+          if (localX <= a) {
+            sagPoint = fPointMax * (localX / a);
+          } else {
+            sagPoint = fPointMax * ((L - localX) / b);
+          }
         }
 
         const totalSag = sagDistributed + sagPoint;
@@ -1151,7 +1166,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
     layer.selectAll('*').remove();
 
-    if (!this.showEmptyCable() || this.supports.length < 2) return;
+    if (!this.showEmptyCable()) return;
 
     const cablePoints = this.calculateEmptyCable();
     if (cablePoints.length < 2) return;
@@ -1181,7 +1196,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
     layer.selectAll('*').remove();
 
-    if (!this.showLoadedCable() || this.supports.length < 2) return;
+    if (!this.showLoadedCable()) return;
 
     const cablePoints = this.calculateLoadedCable();
     if (cablePoints.length < 2) return;
@@ -1237,7 +1252,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private getLoadPosition(): number {
+  public getLoadPosition(): number {
     const allPoints = this.getSupportPoints();
     if (allPoints.length < 2) return 0;
 
