@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  seilbahn-app:
+    build: .
+    container_name: seilbahn-app
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.seilbahn.rule=Host(`seilbahn.abler.tirol`)"
+      - "traefik.http.routers.seilbahn.entrypoints=websecure"
+      - "traefik.http.routers.seilbahn.tls.certresolver=letsEncrypt"
+      - "traefik.http.routers.seilbahn.tls=true"
+      - "traefik.http.services.seilbahn.loadbalancer.server.port=80"

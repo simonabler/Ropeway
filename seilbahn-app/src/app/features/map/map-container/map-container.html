@@ -6,7 +6,7 @@
   @if (showInstructions()) {
     <div class="instructions-overlay" (click)="hideInstructions()">
       <div class="instructions-card">
-        <h3>?? Start & Richtung</h3>
+        <h3>Start & Richtung</h3>
         <ol>
           <li><strong>Tippen</strong> auf Karte = Startpunkt</li>
           <li><strong>Pfeil ziehen</strong> = Richtung (Azimut)</li>
@@ -79,7 +79,7 @@
     <!-- Profile Length -->
     @if (profileLengthMeters > 0) {
       <div class="info-item">
-        <span class="label">Profil-L?nge</span>
+        <span class="label">Profil-Länge</span>
         <span class="value highlight">{{ getProfileLengthFormatted() }}</span>
       </div>
     }
@@ -88,7 +88,7 @@
     @if (startPoint()) {
       <div class="info-item">
         <span class="label">Richtung</span>
-        <span class="value highlight">{{ azimuth() }}? {{ getAzimuthDirection() }}</span>
+        <span class="value highlight">{{ azimuth() }}&deg; {{ getAzimuthDirection() }}</span>
       </div>
     }
   </div>

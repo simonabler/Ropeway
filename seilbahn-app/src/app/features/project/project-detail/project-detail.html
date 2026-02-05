@@ -1,7 +1,7 @@
 <div class="project-detail-container">
   <!-- Header -->
   <div class="project-header">
-    <button class="btn-back" (click)="goBack()">? Zur?ck</button>
+    <button class="btn-back" (click)="goBack()">&larr; Zurück</button>
     @if (project()) {
       <h1 class="project-title">{{ project()!.name }}</h1>
     }
@@ -18,7 +18,7 @@
   @if (error()) {
     <div class="error-state">
       <p>{{ error() }}</p>
-      <button class="btn-primary" (click)="goBack()">Zur?ck zur ?bersicht</button>
+      <button class="btn-primary" (click)="goBack()">Zurück zur Übersicht</button>
     </div>
   }
 
@@ -29,7 +29,7 @@
       <section class="workflow-section map-section">
         <div class="section-header">
           <h2>Startpunkt & Richtung</h2>
-          <p>W?hlen Sie den Startpunkt und die Richtung (Azimut). Die L?nge kommt aus dem Gel?ndeprofil.</p>
+          <p>Wählen Sie den Startpunkt und die Richtung (Azimut). Die Länge kommt aus dem Geländeprofil.</p>
         </div>
         <app-map-container
           [profileLengthMeters]="project()?.terrainProfile?.totalLength ?? 0"
@@ -40,8 +40,8 @@
       <!-- Terrain Input Section -->
       <section class="workflow-section">
         <div class="section-header">
-          <h2>Gel?ndeprofil erfassen</h2>
-          <p>Erfassen Sie das Bodenprofil mit Laser-Messungen (L?nge + Steigung %)</p>
+          <h2>Geländeprofil erfassen</h2>
+          <p>Erfassen Sie das Bodenprofil mit Laser-Messungen (Länge + Steigung %)</p>
         </div>
         <app-terrain-input></app-terrain-input>
       </section>
@@ -49,8 +49,8 @@
       <!-- Support Placement Section -->
       <section class="workflow-section">
         <div class="section-header">
-          <h2>St?tzen platzieren</h2>
-          <p>Positionieren Sie die St?tzen entlang der Strecke</p>
+          <h2>Stützen platzieren</h2>
+          <p>Positionieren Sie die Stützen entlang der Strecke</p>
         </div>
         <app-support-placement></app-support-placement>
       </section>
@@ -59,7 +59,7 @@
       <section class="workflow-section">
         <div class="section-header">
           <h2>Seilparameter</h2>
-          <p>W?hlen Sie ein Preset oder konfigurieren Sie die Seilparameter manuell</p>
+          <p>Wählen Sie ein Preset oder konfigurieren Sie die Seilparameter manuell</p>
         </div>
         <app-cable-config></app-cable-config>
       </section>
@@ -77,7 +77,7 @@
       <section class="workflow-section visualization-section">
         <div class="section-header">
           <h2>Profil-Visualisierung</h2>
-          <p>Interaktive Darstellung von Gel?nde, Seil und St?tzen</p>
+          <p>Interaktive Darstellung von Gelände, Seil und Stützen</p>
         </div>
         <app-profile-chart></app-profile-chart>
       </section>

@@ -4,17 +4,17 @@
     <h3>Profil-Ansicht</h3>
     <div class="chart-controls">
       @if (isZoomed()) {
-        <button class="btn-reset-zoom" (click)="resetZoom()" title="Zoom zur?cksetzen">
-          <span class="icon">?</span>
+        <button class="btn-reset-zoom" (click)="resetZoom()" title="Zoom zurücksetzen">
+          <span class="icon">&#x21BA;</span>
           <span class="label">Reset</span>
         </button>
       }
       <button class="btn-fullscreen" (click)="toggleFullscreen()" [title]="isFullscreen() ? 'Vollbild beenden' : 'Vollbild'">
         @if (isFullscreen()) {
-          <span class="icon">?</span>
+          <span class="icon">&#x2716;</span>
           <span class="label">Beenden</span>
         } @else {
-          <span class="icon">?</span>
+          <span class="icon">&#x26F6;</span>
           <span class="label">Vollbild</span>
         }
       </button>
@@ -215,7 +215,7 @@
       </div>
       <div class="legend-item">
         <span class="legend-color cable"></span>
-        <span class="legend-label">Maximale Punktlast (H?llkurve)</span>
+        <span class="legend-label">Maximale Punktlast (Hüllkurve)</span>
       </div>
       @if (showEmptyCable()) {
         <div class="legend-item">

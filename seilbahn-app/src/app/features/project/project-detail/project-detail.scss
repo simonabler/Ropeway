@@ -3,32 +3,33 @@
 .project-detail-container {
   min-height: 100vh;
   background: $gray-50;
-  padding-bottom: 80px; // Space for bottom nav
+  padding-bottom: 60px;
 }
 
 .project-header {
   background: white;
-  padding: $spacing-md;
+  padding: $spacing-sm $spacing-md;
   box-shadow: $shadow-sm;
   position: sticky;
-  top: 60px; // Below app header
+  top: 0;
   z-index: 100;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: $spacing-sm;
 
   .btn-back {
     background: none;
     border: none;
     color: $primary-color;
-    font-size: $font-size-base;
+    font-size: $font-size-sm;
     cursor: pointer;
     padding: $spacing-xs;
-    min-height: $touch-target-min;
+    min-height: 36px;
     width: fit-content;
     display: flex;
     align-items: center;
     transition: opacity 0.2s;
+    white-space: nowrap;
 
     &:active {
       opacity: 0.7;
@@ -36,10 +37,13 @@
   }
 
   .project-title {
-    font-size: $font-size-xl;
+    font-size: $font-size-base;
     font-weight: 600;
     color: $gray-900;
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -48,9 +52,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: $spacing-xxl;
+  padding: $spacing-lg;
   color: $gray-600;
-  font-size: $font-size-base;
+  font-size: $font-size-sm;
 }
 
 // Error state
@@ -58,8 +62,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: $spacing-md;
-  padding: $spacing-xxl $spacing-md;
+  gap: $spacing-sm;
+  padding: $spacing-lg $spacing-md;
   text-align: center;
   color: $error-color;
 
@@ -68,35 +72,35 @@
   }
 
   .btn-primary {
-    margin-top: $spacing-md;
+    margin-top: $spacing-sm;
   }
 }
 
 // Project content
 .project-content {
-  padding: $spacing-md;
+  padding: $spacing-xs;
 }
 
 // Workflow sections
 .workflow-section {
   background: white;
-  border-radius: 12px;
-  padding: $spacing-lg;
-  margin-bottom: $spacing-lg;
+  border-radius: 8px;
+  padding: $spacing-sm;
+  margin-bottom: $spacing-sm;
   box-shadow: $shadow-sm;
 
   .section-header {
-    margin-bottom: $spacing-lg;
+    margin-bottom: $spacing-sm;
 
     h2 {
-      font-size: $font-size-lg;
+      font-size: $font-size-base;
       font-weight: 600;
       color: $gray-900;
-      margin: 0 0 $spacing-xs 0;
+      margin: 0 0 2px 0;
     }
 
     p {
-      font-size: $font-size-sm;
+      font-size: 12px;
       color: $gray-600;
       margin: 0;
     }
@@ -106,29 +110,55 @@
   &.map-section {
     app-map-container {
       display: block;
-      height: 450px;
-      min-height: 400px;
+      height: 350px;
+      min-height: 300px;
     }
   }
 }
 
-// Responsive
+// Responsive - tablet+
 @media (min-width: 768px) {
   .project-detail-container {
     padding-bottom: 0;
   }
 
   .project-header {
-    top: 0;
+    padding: $spacing-md;
+    flex-direction: column;
+    align-items: flex-start;
+
+    .project-title {
+      font-size: $font-size-xl;
+    }
   }
 
   .project-content {
     max-width: 1200px;
     margin: 0 auto;
-    padding: $spacing-xl;
+    padding: $spacing-lg;
   }
 
   .workflow-section {
-    padding: $spacing-xl;
+    padding: $spacing-lg;
+    margin-bottom: $spacing-md;
+
+    .section-header {
+      margin-bottom: $spacing-md;
+
+      h2 {
+        font-size: $font-size-lg;
+      }
+
+      p {
+        font-size: $font-size-sm;
+      }
+    }
+
+    &.map-section {
+      app-map-container {
+        height: 450px;
+        min-height: 400px;
+      }
+    }
   }
 }

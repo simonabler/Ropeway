@@ -2,7 +2,8 @@
 @import '../../../../styles/breakpoints';
 
 .support-placement-container {
-  padding: $spacing-md;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 // Warning Banner
@@ -24,21 +25,20 @@
 
 // Input Section
 .input-section {
-  background: white;
-  border-radius: $border-radius-lg;
-  padding: $spacing-lg;
-  box-shadow: $shadow-sm;
-  margin-bottom: $spacing-md;
+  background: $gray-50;
+  border-radius: $border-radius-sm;
+  padding: $spacing-sm;
+  margin-bottom: $spacing-sm;
 }
 
 .input-group {
-  margin-bottom: $spacing-lg;
+  margin-bottom: $spacing-sm;
 
   label {
     display: block;
     font-weight: 500;
     color: $gray-700;
-    margin-bottom: $spacing-sm;
+    margin-bottom: 4px;
     font-size: $font-size-sm;
   }
 }
@@ -47,16 +47,16 @@
 .numeric-input {
   display: flex;
   align-items: center;
-  gap: $spacing-xs;
+  gap: 3px;
 
   input {
     flex: 1;
     min-width: 0;
-    height: $touch-target-min;
-    padding: $spacing-sm $spacing-md;
-    border: 2px solid $gray-300;
-    border-radius: $border-radius-md;
-    font-size: $font-size-lg;
+    height: 36px;
+    padding: $spacing-xs;
+    border: 1px solid $gray-300;
+    border-radius: $border-radius-sm;
+    font-size: 16px;
     text-align: center;
     -moz-appearance: textfield;
 
@@ -73,16 +73,18 @@
   }
 
   .btn-adjust {
-    min-width: $touch-target-min;
-    height: $touch-target-min;
-    border: 2px solid $gray-300;
+    min-width: 34px;
+    height: 36px;
+    border: 1px solid $gray-300;
     background: white;
-    border-radius: $border-radius-md;
-    font-size: $font-size-sm;
+    border-radius: $border-radius-sm;
+    font-size: 13px;
     font-weight: 600;
     color: $gray-700;
     cursor: pointer;
     transition: all $transition-fast;
+    flex-shrink: 0;
+    padding: 0 3px;
 
     &:active {
       background: $gray-100;
@@ -94,16 +96,16 @@
 // Quick Position Buttons
 .quick-buttons {
   display: flex;
-  gap: $spacing-sm;
-  margin-top: $spacing-sm;
+  gap: 4px;
+  margin-top: 4px;
 
   .btn-quick {
     flex: 1;
-    height: 36px;
+    height: 30px;
     border: 1px solid $gray-300;
     background: $gray-50;
     border-radius: $border-radius-sm;
-    font-size: $font-size-sm;
+    font-size: 12px;
     color: $gray-600;
     cursor: pointer;
 
@@ -124,9 +126,9 @@
 // Preview Info
 .preview-info {
   background: $gray-50;
-  border-radius: $border-radius-md;
-  padding: $spacing-md;
-  margin-bottom: $spacing-lg;
+  border-radius: $border-radius-sm;
+  padding: $spacing-xs $spacing-sm;
+  margin-bottom: $spacing-sm;
 
   .info-row {
     display: flex;
@@ -159,10 +161,10 @@
   .btn-primary,
   .btn-secondary {
     flex: 1;
-    height: $touch-target-comfortable;
+    height: 38px;
     border: none;
-    border-radius: $border-radius-md;
-    font-size: $font-size-base;
+    border-radius: $border-radius-sm;
+    font-size: $font-size-sm;
     font-weight: 600;
     cursor: pointer;
     transition: all $transition-fast;
@@ -197,9 +199,9 @@
   justify-content: space-around;
   background: $primary-color;
   color: white;
-  border-radius: $border-radius-md;
-  padding: $spacing-md;
-  margin-bottom: $spacing-md;
+  border-radius: $border-radius-sm;
+  padding: $spacing-xs $spacing-sm;
+  margin-bottom: $spacing-sm;
 
   .summary-item {
     text-align: center;
@@ -229,11 +231,11 @@
 
 .support-card {
   background: white;
-  border-radius: $border-radius-md;
-  padding: $spacing-md;
-  margin-bottom: $spacing-sm;
+  border-radius: $border-radius-sm;
+  padding: $spacing-xs $spacing-sm;
+  margin-bottom: 4px;
   box-shadow: $shadow-sm;
-  border-left: 4px solid $primary-color;
+  border-left: 3px solid $primary-color;
   transition: all $transition-fast;
 
   &.editing {
@@ -254,15 +256,16 @@
 
     .support-number {
       font-weight: 700;
-      font-size: $font-size-lg;
+      font-size: $font-size-sm;
       color: $primary-color;
     }
 
     .support-position {
       font-weight: 600;
+      font-size: 12px;
       color: $gray-700;
       background: $gray-100;
-      padding: $spacing-xs $spacing-sm;
+      padding: 2px $spacing-xs;
       border-radius: $border-radius-sm;
     }
   }
@@ -299,13 +302,13 @@
     border-top: 1px solid $gray-100;
 
     .btn-icon {
-      width: 40px;
-      height: 40px;
+      width: 30px;
+      height: 30px;
       border: none;
       background: $gray-100;
       border-radius: $border-radius-sm;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -329,7 +332,7 @@
 // Empty State
 .empty-state {
   text-align: center;
-  padding: $spacing-xxl $spacing-md;
+  padding: $spacing-lg $spacing-sm;
   color: $gray-500;
 
   p {

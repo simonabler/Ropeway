@@ -2,18 +2,19 @@
 @import '../../../../styles/breakpoints';
 
 .cable-config-container {
-  padding: $spacing-md;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 // Preset Section
 .preset-section {
-  margin-bottom: $spacing-lg;
+  margin-bottom: $spacing-sm;
 
   h3 {
-    font-size: $font-size-base;
+    font-size: $font-size-sm;
     font-weight: 600;
     color: $gray-700;
-    margin-bottom: $spacing-md;
+    margin-bottom: $spacing-xs;
   }
 }
 
@@ -28,10 +29,10 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: $spacing-md;
+  padding: $spacing-xs $spacing-sm;
   background: white;
-  border: 2px solid $gray-200;
-  border-radius: $border-radius-md;
+  border: 1px solid $gray-200;
+  border-radius: $border-radius-sm;
   cursor: pointer;
   text-align: left;
   transition: all $transition-fast;
@@ -51,21 +52,21 @@
 
   .preset-name {
     font-weight: 600;
-    font-size: $font-size-base;
+    font-size: $font-size-sm;
     color: $gray-900;
-    margin-bottom: $spacing-xs;
+    margin-bottom: 2px;
   }
 
   .preset-desc {
-    font-size: $font-size-sm;
+    font-size: 12px;
     color: $gray-600;
-    margin-bottom: $spacing-sm;
+    margin-bottom: 4px;
   }
 
   .preset-values {
     display: flex;
-    gap: $spacing-md;
-    font-size: $font-size-sm;
+    gap: $spacing-sm;
+    font-size: 12px;
     color: $gray-500;
 
     span {
@@ -127,9 +128,9 @@
 .modification-warning {
   background: #fff3cd;
   border: 1px solid #ffc107;
-  border-radius: $border-radius-md;
-  padding: $spacing-md;
-  margin-bottom: $spacing-lg;
+  border-radius: $border-radius-sm;
+  padding: $spacing-xs $spacing-sm;
+  margin-bottom: $spacing-sm;
 
   .warning-header {
     display: flex;
@@ -194,38 +195,38 @@
 // Current Config Display
 .current-config {
   background: white;
-  border-radius: $border-radius-lg;
-  padding: $spacing-lg;
+  border-radius: $border-radius-sm;
+  padding: $spacing-sm;
   box-shadow: $shadow-sm;
-  margin-bottom: $spacing-lg;
+  margin-bottom: $spacing-sm;
 
   .config-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: $spacing-md;
+    margin-bottom: $spacing-xs;
 
     h3 {
-      font-size: $font-size-base;
+      font-size: $font-size-sm;
       font-weight: 600;
       color: $gray-700;
       margin: 0;
     }
 
     .preset-tag {
-      font-size: $font-size-sm;
+      font-size: 12px;
       background: $primary-color;
       color: white;
-      padding: $spacing-xs $spacing-sm;
+      padding: 2px $spacing-xs;
       border-radius: $border-radius-sm;
     }
   }
 
   .config-summary {
     background: $gray-50;
-    border-radius: $border-radius-md;
-    padding: $spacing-md;
-    margin-bottom: $spacing-md;
+    border-radius: $border-radius-sm;
+    padding: $spacing-xs $spacing-sm;
+    margin-bottom: $spacing-xs;
 
     .summary-row {
       display: flex;
@@ -259,33 +260,33 @@
 // Manual Input Section
 .manual-input-section {
   background: white;
-  border-radius: $border-radius-lg;
-  padding: $spacing-lg;
+  border-radius: $border-radius-sm;
+  padding: $spacing-sm;
   box-shadow: $shadow-sm;
 
   h3 {
-    font-size: $font-size-base;
+    font-size: $font-size-sm;
     font-weight: 600;
     color: $gray-700;
-    margin-bottom: $spacing-lg;
+    margin-bottom: $spacing-sm;
   }
 }
 
 .input-group {
-  margin-bottom: $spacing-lg;
+  margin-bottom: $spacing-sm;
 
   label {
     display: block;
     font-weight: 500;
     color: $gray-700;
-    margin-bottom: $spacing-sm;
+    margin-bottom: 4px;
     font-size: $font-size-sm;
   }
 
   .hint {
     display: block;
-    margin-top: $spacing-xs;
-    font-size: $font-size-sm;
+    margin-top: 2px;
+    font-size: 12px;
     color: $gray-500;
   }
 }
@@ -293,16 +294,16 @@
 .numeric-input {
   display: flex;
   align-items: center;
-  gap: $spacing-xs;
+  gap: 3px;
 
   input {
     flex: 1;
     min-width: 0;
-    height: $touch-target-min;
-    padding: $spacing-sm $spacing-md;
-    border: 2px solid $gray-300;
-    border-radius: $border-radius-md;
-    font-size: $font-size-lg;
+    height: 36px;
+    padding: $spacing-xs;
+    border: 1px solid $gray-300;
+    border-radius: $border-radius-sm;
+    font-size: 16px;
     text-align: center;
     -moz-appearance: textfield;
 
@@ -319,16 +320,18 @@
   }
 
   .btn-adjust {
-    min-width: $touch-target-min;
-    height: $touch-target-min;
-    border: 2px solid $gray-300;
+    min-width: 34px;
+    height: 36px;
+    border: 1px solid $gray-300;
     background: white;
-    border-radius: $border-radius-md;
-    font-size: $font-size-sm;
+    border-radius: $border-radius-sm;
+    font-size: 13px;
     font-weight: 600;
     color: $gray-700;
     cursor: pointer;
     transition: all $transition-fast;
+    flex-shrink: 0;
+    padding: 0 3px;
 
     &:active {
       background: $gray-100;
@@ -362,12 +365,12 @@
 
 // Buttons
 .btn-secondary {
-  height: $touch-target-comfortable;
+  height: 36px;
   background: $gray-200;
   border: none;
-  border-radius: $border-radius-md;
+  border-radius: $border-radius-sm;
   color: $gray-700;
-  font-size: $font-size-base;
+  font-size: $font-size-sm;
   font-weight: 600;
   cursor: pointer;
   transition: all $transition-fast;
@@ -386,14 +389,14 @@
   .diameter-selector {
     display: flex;
     flex-direction: column;
-    gap: $spacing-sm;
+    gap: 4px;
 
     .diameter-dropdown {
-      height: $touch-target-min;
-      padding: $spacing-sm $spacing-md;
-      border: 2px solid $gray-300;
-      border-radius: $border-radius-md;
-      font-size: $font-size-base;
+      height: 36px;
+      padding: $spacing-xs $spacing-sm;
+      border: 1px solid $gray-300;
+      border-radius: $border-radius-sm;
+      font-size: $font-size-sm;
       background: white;
       cursor: pointer;
 
@@ -414,15 +417,15 @@
 // Material Selector
 .material-selector {
   display: flex;
-  gap: $spacing-sm;
+  gap: 4px;
 
   .material-btn {
     flex: 1;
-    height: $touch-target-min;
-    border: 2px solid $gray-300;
+    height: 36px;
+    border: 1px solid $gray-300;
     background: white;
-    border-radius: $border-radius-md;
-    font-size: $font-size-base;
+    border-radius: $border-radius-sm;
+    font-size: $font-size-sm;
     font-weight: 500;
     color: $gray-700;
     cursor: pointer;
@@ -445,15 +448,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: $spacing-sm;
+  gap: $spacing-xs;
   width: 100%;
-  height: $touch-target-comfortable;
-  margin-top: $spacing-lg;
+  height: 38px;
+  margin-top: $spacing-sm;
   background: $success-color;
   border: none;
-  border-radius: $border-radius-md;
+  border-radius: $border-radius-sm;
   color: white;
-  font-size: $font-size-base;
+  font-size: $font-size-sm;
   font-weight: 600;
   cursor: pointer;
   transition: all $transition-fast;

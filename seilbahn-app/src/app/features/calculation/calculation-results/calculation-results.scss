@@ -2,12 +2,13 @@
 @import '../../../../styles/breakpoints';
 
 .calculation-container {
-  padding: $spacing-md;
+  max-width: 700px;
+  margin: 0 auto;
 }
 
 // Trigger Section
 .trigger-section {
-  margin-bottom: $spacing-lg;
+  margin-bottom: $spacing-sm;
   text-align: center;
 }
 
@@ -55,20 +56,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: $spacing-sm;
+  gap: $spacing-xs;
   width: 100%;
-  max-width: 300px;
+  max-width: 280px;
   margin: 0 auto;
-  padding: $spacing-md $spacing-lg;
+  padding: $spacing-xs $spacing-md;
   background: $primary-color;
   color: white;
   border: none;
-  border-radius: $border-radius-lg;
-  font-size: $font-size-lg;
+  border-radius: $border-radius-sm;
+  font-size: $font-size-sm;
   font-weight: 600;
   cursor: pointer;
   transition: all $transition-fast;
-  min-height: 56px;
+  height: 40px;
 
   &:hover:not(:disabled) {
     background: darken($primary-color, 10%);
@@ -114,8 +115,8 @@
 // Results Section
 .results-section {
   background: white;
-  border-radius: $border-radius-lg;
-  padding: $spacing-lg;
+  border-radius: $border-radius-sm;
+  padding: $spacing-sm;
   box-shadow: $shadow-sm;
 
   &.invalid {
@@ -127,10 +128,10 @@
 .status-header {
   display: flex;
   align-items: center;
-  gap: $spacing-sm;
-  padding: $spacing-md;
-  border-radius: $border-radius-md;
-  margin-bottom: $spacing-lg;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $border-radius-sm;
+  margin-bottom: $spacing-sm;
 
   &.success {
     background: #e8f5e9;
@@ -143,21 +144,21 @@
   }
 
   .status-icon {
-    font-size: 24px;
+    font-size: 18px;
     font-weight: bold;
   }
 
   .status-text {
-    font-size: $font-size-lg;
+    font-size: $font-size-sm;
     font-weight: 600;
   }
 }
 
 // Message Boxes
 .message-box {
-  padding: $spacing-md;
-  border-radius: $border-radius-md;
-  margin-bottom: $spacing-md;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $border-radius-sm;
+  margin-bottom: $spacing-xs;
 
   h4 {
     margin: 0 0 $spacing-sm 0;
@@ -191,21 +192,21 @@
 
 // Main Results
 .main-results {
-  margin-bottom: $spacing-lg;
+  margin-bottom: $spacing-sm;
 }
 
 // Result Cards
 .result-cards {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: $spacing-sm;
-  margin-bottom: $spacing-lg;
+  gap: 4px;
+  margin-bottom: $spacing-sm;
 }
 
 .result-card {
   background: $gray-50;
-  border-radius: $border-radius-md;
-  padding: $spacing-md;
+  border-radius: $border-radius-sm;
+  padding: $spacing-xs $spacing-sm;
   text-align: center;
 
   &.highlight {
@@ -215,21 +216,21 @@
 
   .result-label {
     display: block;
-    font-size: $font-size-sm;
+    font-size: 11px;
     color: $gray-600;
-    margin-bottom: $spacing-xs;
+    margin-bottom: 2px;
   }
 
   .result-value {
     display: block;
-    font-size: $font-size-xl;
+    font-size: $font-size-base;
     font-weight: 700;
     color: $gray-900;
   }
 
   .result-unit {
     display: block;
-    font-size: $font-size-sm;
+    font-size: 11px;
     color: $gray-500;
   }
 }
@@ -237,9 +238,9 @@
 // Clearance Info
 .clearance-info {
   background: $gray-50;
-  border-radius: $border-radius-md;
-  padding: $spacing-md;
-  margin-bottom: $spacing-lg;
+  border-radius: $border-radius-sm;
+  padding: $spacing-xs $spacing-sm;
+  margin-bottom: $spacing-sm;
 
   &.warning {
     background: #fff3cd;
@@ -255,16 +256,16 @@
 
   .clearance-value {
     .value {
-      font-size: $font-size-xl;
+      font-size: $font-size-base;
       font-weight: 700;
       color: $gray-900;
     }
 
     .location {
       display: block;
-      font-size: $font-size-sm;
+      font-size: 12px;
       color: $gray-500;
-      margin-top: $spacing-xs;
+      margin-top: 2px;
     }
   }
 }
@@ -288,7 +289,7 @@
 .span-card {
   background: $gray-50;
   border-radius: $border-radius-sm;
-  padding: $spacing-md;
+  padding: $spacing-xs $spacing-sm;
   border-left: 3px solid $primary-color;
 
   .span-header {
@@ -343,7 +344,7 @@
 // Anchor + Support Forces
 .anchor-forces,
 .support-forces {
-  margin-bottom: $spacing-lg;
+  margin-bottom: $spacing-sm;
 
   h4 {
     margin: 0 0 $spacing-sm 0;
@@ -361,8 +362,8 @@
 
 .force-card {
   background: $gray-50;
-  border-radius: $border-radius-md;
-  padding: $spacing-md;
+  border-radius: $border-radius-sm;
+  padding: $spacing-xs $spacing-sm;
   border: 1px solid $gray-200;
 
   .force-title {
@@ -391,10 +392,10 @@
 // Cable Capacity Check
 .capacity-check {
   background: $gray-50;
-  border-radius: $border-radius-lg;
-  padding: $spacing-lg;
-  margin-bottom: $spacing-lg;
-  border: 2px solid $gray-200;
+  border-radius: $border-radius-sm;
+  padding: $spacing-sm;
+  margin-bottom: $spacing-sm;
+  border: 1px solid $gray-200;
 
   &.ok {
     background: #e8f5e9;
@@ -438,22 +439,22 @@
   .capacity-header {
     display: flex;
     align-items: center;
-    gap: $spacing-sm;
-    margin-bottom: $spacing-md;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-xs;
 
     .status-icon {
-      font-size: 24px;
+      font-size: 18px;
       font-weight: bold;
     }
 
     .status-text {
-      font-size: $font-size-lg;
+      font-size: $font-size-sm;
       font-weight: 600;
     }
   }
 
   .capacity-details {
-    margin-bottom: $spacing-md;
+    margin-bottom: $spacing-xs;
 
     .capacity-row {
       display: flex;
@@ -476,7 +477,7 @@
 
       &.highlight {
         background: rgba(255, 255, 255, 0.5);
-        margin: $spacing-xs -$spacing-sm;
+        margin: $spacing-xs - $spacing-sm;
         padding: $spacing-sm;
         border-radius: $border-radius-sm;
 

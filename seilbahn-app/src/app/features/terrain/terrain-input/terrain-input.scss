@@ -3,7 +3,6 @@
 @import '../../../../styles/breakpoints';
 
 .terrain-input-container {
-  padding: $spacing-md;
   max-width: 800px;
   margin: 0 auto;
 }
@@ -12,25 +11,23 @@
 .summary-bar {
   display: flex;
   justify-content: space-around;
-  background: white;
-  border-radius: $border-radius-md;
-  padding: $spacing-md;
-  margin-bottom: $spacing-md;
-  box-shadow: $shadow-sm;
+  background: $gray-50;
+  border-radius: $border-radius-sm;
+  padding: $spacing-xs $spacing-sm;
+  margin-bottom: $spacing-sm;
 
   .summary-item {
     text-align: center;
 
     .label {
       display: block;
-      font-size: $font-size-sm;
+      font-size: 11px;
       color: $gray-600;
-      margin-bottom: $spacing-xs;
     }
 
     .value {
       display: block;
-      font-size: $font-size-xl;
+      font-size: $font-size-base;
       font-weight: 600;
       color: $primary-color;
     }
@@ -39,12 +36,11 @@
 
 // Input Card
 .input-card {
-  background: white;
-  border-radius: $border-radius-md;
-  padding: $spacing-lg;
-  margin-bottom: $spacing-md;
-  box-shadow: $shadow-sm;
-  border: 2px solid transparent;
+  background: $gray-50;
+  border-radius: $border-radius-sm;
+  padding: $spacing-sm;
+  margin-bottom: $spacing-sm;
+  border: 1px solid transparent;
   transition: all $transition-fast;
 
   &.editing {
@@ -53,61 +49,76 @@
   }
 
   h3 {
-    margin: 0 0 $spacing-md 0;
-    font-size: $font-size-lg;
+    margin: 0 0 $spacing-sm 0;
+    font-size: $font-size-sm;
+    font-weight: 600;
   }
 }
 
 .input-group {
-  margin-bottom: $spacing-lg;
+  margin-bottom: $spacing-sm;
 }
 
 .input-label {
   display: block;
   font-weight: 500;
-  margin-bottom: $spacing-sm;
+  margin-bottom: 4px;
   color: $gray-900;
+  font-size: $font-size-sm;
 
   .optional {
     color: $gray-600;
     font-weight: 400;
-    font-size: $font-size-sm;
+    font-size: 12px;
   }
 }
 
-// Numeric Input with +/- buttons
+// Numeric Input with +/- buttons - COMPACT for mobile
 .numeric-input {
   display: flex;
-  gap: $spacing-xs;
+  gap: 3px;
   align-items: stretch;
 
   input.numeric-value {
     flex: 1;
+    min-width: 0;
     text-align: center;
-    font-size: $font-size-xl;
+    font-size: $font-size-base;
     font-weight: 600;
-    padding: $spacing-md;
-    border: 2px solid $gray-300;
+    padding: $spacing-xs;
+    border: 1px solid $gray-300;
     border-radius: $border-radius-sm;
-    min-height: $touch-target-comfortable;
+    height: 36px;
+
+    // Prevent iOS zoom
+    font-size: 16px;
 
     &:focus {
       outline: none;
       border-color: $primary-color;
     }
+
+    // Remove spinner
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    -moz-appearance: textfield;
   }
 
   button {
-    min-width: $touch-target-min;
-    min-height: $touch-target-comfortable;
-    padding: $spacing-sm $spacing-md;
-    font-size: $font-size-lg;
+    min-width: 34px;
+    height: 36px;
+    padding: 0 4px;
+    font-size: 13px;
     font-weight: 600;
     border: none;
     border-radius: $border-radius-sm;
     cursor: pointer;
     transition: all $transition-fast;
     user-select: none;
+    flex-shrink: 0;
   }
 
   .btn-decrement {
@@ -125,7 +136,7 @@
     color: white;
 
     &:active {
-      background:  color.adjust($primary-color, $lightness: 10%);
+      background: color.adjust($primary-color, $lightness: 10%);
       transform: scale(0.95);
     }
   }
@@ -133,10 +144,11 @@
 
 .text-input {
   width: 100%;
-  padding: $spacing-md;
-  border: 2px solid $gray-300;
+  padding: $spacing-xs $spacing-sm;
+  border: 1px solid $gray-300;
   border-radius: $border-radius-sm;
-  font-size: $font-size-base;
+  font-size: 16px; // prevent iOS zoom
+  height: 36px;
 
   &:focus {
     outline: none;
@@ -146,31 +158,31 @@
 
 .input-error {
   color: $warn-color;
-  font-size: $font-size-sm;
-  margin-top: $spacing-xs;
+  font-size: 12px;
+  margin-top: 2px;
 }
 
 .input-hint {
   color: $gray-600;
-  font-size: $font-size-sm;
-  margin-top: $spacing-xs;
+  font-size: 12px;
+  margin-top: 2px;
 }
 
 // Action Buttons
 .action-buttons {
   display: flex;
-  gap: $spacing-md;
-  margin-top: $spacing-lg;
+  gap: $spacing-sm;
+  margin-top: $spacing-sm;
 
   .btn-large {
     flex: 1;
-    padding: $spacing-md;
-    font-size: $font-size-lg;
+    padding: $spacing-xs $spacing-sm;
+    font-size: $font-size-sm;
     font-weight: 600;
     border: none;
-    border-radius: $border-radius-md;
+    border-radius: $border-radius-sm;
     cursor: pointer;
-    min-height: $touch-target-comfortable;
+    height: 38px;
     transition: all $transition-fast;
 
     &:disabled {
@@ -196,27 +208,27 @@
 
 // Segment List
 .segment-list {
-  margin-top: $spacing-lg;
+  margin-top: $spacing-sm;
 
   h3 {
-    margin-bottom: $spacing-md;
-    font-size: $font-size-lg;
+    margin-bottom: $spacing-xs;
+    font-size: $font-size-sm;
+    font-weight: 600;
   }
 }
 
 .segments {
   display: flex;
   flex-direction: column;
-  gap: $spacing-sm;
+  gap: 4px;
 }
 
 .segment-card {
-  background: white;
+  background: $gray-50;
   border-radius: $border-radius-sm;
-  padding: $spacing-md;
-  box-shadow: $shadow-sm;
+  padding: $spacing-xs $spacing-sm;
   transition: all $transition-fast;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
 
   &.highlight {
     animation: highlight 1s ease-out;
@@ -234,7 +246,7 @@
     background: rgba($success-color, 0.2);
   }
   100% {
-    background: white;
+    background: $gray-50;
   }
 }
 
@@ -242,27 +254,27 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: $spacing-sm;
+  margin-bottom: 2px;
 
   .segment-number {
     font-weight: 600;
-    font-size: $font-size-lg;
+    font-size: $font-size-sm;
     color: $primary-color;
   }
 
   .segment-actions {
     display: flex;
-    gap: $spacing-xs;
+    gap: 2px;
   }
 
   .btn-edit {
-    width: 36px;
-    height: 36px;
+    width: 30px;
+    height: 30px;
     border: none;
     background: $gray-100;
     border-radius: $border-radius-sm;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -282,12 +294,12 @@
   .btn-remove {
     background: none;
     border: none;
-    font-size: 20px;
+    font-size: 16px;
     color: $warn-color;
     cursor: pointer;
-    padding: $spacing-xs;
-    min-width: $touch-target-min;
-    min-height: $touch-target-min;
+    padding: 0;
+    width: 30px;
+    height: 30px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -302,20 +314,20 @@
 .segment-body {
   display: flex;
   flex-direction: column;
-  gap: $spacing-sm;
+  gap: 2px;
 }
 
 .segment-info,
 .segment-cumulative {
   display: flex;
-  gap: $spacing-md;
+  gap: $spacing-sm;
 }
 
 .info-row {
   flex: 1;
   display: flex;
   justify-content: space-between;
-  font-size: $font-size-sm;
+  font-size: 12px;
 
   .info-label {
     color: $gray-600;
@@ -336,31 +348,80 @@
 }
 
 .segment-notes {
-  font-size: $font-size-sm;
+  font-size: 12px;
   color: $gray-700;
   font-style: italic;
-  padding-top: $spacing-xs;
+  padding-top: 2px;
   border-top: 1px solid $gray-200;
 }
 
 // Empty State
 .empty-state {
   text-align: center;
-  padding: $spacing-xxl;
+  padding: $spacing-lg;
   color: $gray-600;
 
   .empty-icon {
-    font-size: 48px;
-    margin-bottom: $spacing-md;
+    font-size: 32px;
+    margin-bottom: $spacing-sm;
     opacity: 0.5;
   }
 
   h3 {
     color: $gray-700;
-    margin-bottom: $spacing-sm;
+    margin-bottom: $spacing-xs;
+    font-size: $font-size-sm;
   }
 
   p {
     color: $gray-600;
+    font-size: 12px;
+  }
+}
+
+// Tablet+
+@media (min-width: 768px) {
+  .terrain-input-container {
+    padding: $spacing-sm;
+  }
+
+  .summary-bar {
+    padding: $spacing-md;
+  }
+
+  .input-card {
+    padding: $spacing-md;
+
+    h3 {
+      font-size: $font-size-base;
+    }
+  }
+
+  .input-group {
+    margin-bottom: $spacing-md;
+  }
+
+  .numeric-input {
+    gap: $spacing-xs;
+
+    input.numeric-value {
+      height: 44px;
+      font-size: $font-size-lg;
+    }
+
+    button {
+      min-width: 44px;
+      height: 44px;
+      font-size: $font-size-base;
+    }
+  }
+
+  .action-buttons .btn-large {
+    height: 44px;
+    font-size: $font-size-base;
+  }
+
+  .segment-card {
+    padding: $spacing-sm $spacing-md;
   }
 }

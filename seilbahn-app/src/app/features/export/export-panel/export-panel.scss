@@ -3,26 +3,26 @@
 .export-panel {
   display: flex;
   flex-direction: column;
-  gap: $spacing-lg;
+  gap: $spacing-sm;
 }
 
 .export-buttons {
   display: flex;
   flex-direction: column;
-  gap: $spacing-md;
+  gap: $spacing-xs;
 }
 
 .export-btn {
   display: flex;
   align-items: center;
-  gap: $spacing-md;
-  padding: $spacing-lg;
+  gap: $spacing-sm;
+  padding: $spacing-sm;
   background: white;
-  border: 2px solid $gray-200;
-  border-radius: 12px;
+  border: 1px solid $gray-200;
+  border-radius: $border-radius-sm;
   cursor: pointer;
   text-align: left;
-  min-height: $touch-target-min;
+  min-height: 36px;
   transition: all 0.2s ease;
 
   &:active:not(:disabled) {
@@ -35,7 +35,7 @@
   }
 
   .btn-icon {
-    font-size: 2rem;
+    font-size: 1.3rem;
     flex-shrink: 0;
   }
 
@@ -46,13 +46,13 @@
   }
 
   .btn-title {
-    font-size: $font-size-base;
+    font-size: $font-size-sm;
     font-weight: 600;
     color: $gray-900;
   }
 
   .btn-desc {
-    font-size: $font-size-sm;
+    font-size: 12px;
     color: $gray-600;
   }
 
@@ -99,9 +99,9 @@
 .export-status {
   display: flex;
   align-items: center;
-  gap: $spacing-sm;
-  padding: $spacing-md;
-  border-radius: 8px;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $border-radius-sm;
   font-size: $font-size-sm;
   font-weight: 500;
   background: $gray-100;
@@ -135,8 +135,8 @@
 
 .export-info {
   background: $gray-50;
-  padding: $spacing-md;
-  border-radius: 8px;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $border-radius-sm;
   font-size: $font-size-sm;
 
   h4 {
@@ -163,10 +163,10 @@
 }
 
 .export-warning {
-  padding: $spacing-md;
+  padding: $spacing-xs $spacing-sm;
   background: rgba(255, 152, 0, 0.1);
   border: 1px solid rgba(255, 152, 0, 0.3);
-  border-radius: 8px;
+  border-radius: $border-radius-sm;
   color: #E65100;
   font-size: $font-size-sm;
 }
