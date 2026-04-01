@@ -1,48 +1,87 @@
 # Context (Seilbahn)
 
+Stand: 2026-04-01
+
 ## Repo
-- Root: c:\Users\ematric\Desktop\Seilbahn
-- Main app: seilbahn-app (Angular 21 PWA, standalone components)
+- Root: `C:\Users\ematric\Desktop\Seilbahn`
+- Hauptanwendung: `seilbahn-app`
+- Stack: Angular 21 PWA, Standalone Components, RxJS + Signals, Dexie, D3, Leaflet
 
-## Run (from seilbahn-app)
-- npm start
-- npm run build
-- npm test
+## Starten
 
-## Entry + Routing
-- Bootstrap: seilbahn-app/src/main.ts
-- App config + service worker: seilbahn-app/src/app/app.config.ts
-- Routes: seilbahn-app/src/app/app.routes.ts (projects list, create, detail)
+Aus `seilbahn-app/`:
 
-## Core Domain
-- Models: seilbahn-app/src/app/models (Project, TerrainSegment, Support, EndStation, CableConfiguration, CalculationResult, etc.)
-- State: seilbahn-app/src/app/services/state/project-state.service.ts (BehaviorSubjects + auto-save)
-- Storage: seilbahn-app/src/app/services/storage/indexed-db.service.ts (Dexie, projects + cable presets)
+- `npm start`
+- `npm run build`
+- `npm test`
 
-## Calculation
-- Orchestrator: seilbahn-app/src/app/services/calculation/cable-calculator.service.ts
-- Terrain: seilbahn-app/src/app/services/calculation/terrain-calculator.service.ts
-- Engine: seilbahn-app/src/app/services/calculation/engine (geometry + physics)
+## Einstiegspunkte
 
-## Map + Geo
-- Geolocation: seilbahn-app/src/app/services/geo/geolocation.service.ts
-- Leaflet wrapper: seilbahn-app/src/app/services/geo/leaflet-map.service.ts
+- Bootstrap: `seilbahn-app/src/main.ts`
+- App-Konfiguration: `seilbahn-app/src/app/app.config.ts`
+- Routing: `seilbahn-app/src/app/app.routes.ts`
 
-## Export
-- PDF: seilbahn-app/src/app/services/export/pdf-export.service.ts
-- DXF: seilbahn-app/src/app/services/export/dxf-export.service.ts
+## Hauptseiten
 
-## UI Features
-- Project list/create/detail: seilbahn-app/src/app/features/project
-- Terrain input: seilbahn-app/src/app/features/terrain/terrain-input
-- Support placement: seilbahn-app/src/app/features/support/support-placement
-- Cable config: seilbahn-app/src/app/features/cable/cable-config
-- Calculation results: seilbahn-app/src/app/features/calculation/calculation-results
-- D3 profile chart: seilbahn-app/src/app/features/visualization/profile-chart
-- Map container: seilbahn-app/src/app/features/map/map-container
-- Export panel: seilbahn-app/src/app/features/export/export-panel
-- Stations: seilbahn-app/src/app/features/stations
+- `projects`: Projektliste
+- `project/create`: neues Projekt
+- `project/:id`: gesamter Arbeitsworkflow
 
-## Assets
-- Cable presets: seilbahn-app/src/assets/presets/system-cable-presets.json
-- PWA config: seilbahn-app/ngsw-config.json
+## Workflow auf der Detailseite
+
+`ProjectDetail` setzt den aktuellen Projektstand aus diesen Komponenten zusammen:
+
+1. `map-container`: Startpunkt + Azimut
+2. `terrain-input`: Terrain-Segmente
+3. `support-placement`: Stuetzen
+4. `cable-config`: Presets + manuelle Seilparameter
+5. `calculation-results`: Solver-Auswahl + Ergebnisdarstellung
+6. `profile-chart`: D3-Visualisierung + Lastsimulation
+7. `export-panel`: PDF, DXF, JSON
+
+## Zentrale Services
+
+- `services/state/project-state.service.ts`
+  - zentraler Projekt-State
+  - Autosave
+  - Updates fuer Terrain, Stuetzen, Kabeldaten, Solver und Berechnung
+- `services/storage/indexed-db.service.ts`
+  - Dexie-Wrapper fuer `projects` und `cablePresets`
+- `services/calculation/cable-calculator.service.ts`
+  - Orchestrierung der Berechnung
+- `services/presets/cable-preset.service.ts`
+  - System- und User-Presets
+- `services/geo/leaflet-map.service.ts`
+  - Leaflet-Map-State
+- `services/geo/geolocation.service.ts`
+  - GPS-Zugriff
+- `services/export/pdf-export.service.ts`
+- `services/export/dxf-export.service.ts`
+
+## Fachmodell
+
+- `Project` enthaelt weiterhin `startStation` und `endStation`.
+- Im UI gibt es derzeit keine eigene Stationsmaske.
+- `endStation` wird vor der Berechnung aus dem letzten Terrain-Punkt aktualisiert.
+- `solverType` ist aktuell:
+  - `parabolic`
+  - `catenary`
+  - `catenary-piecewise`
+
+## Was aktuell wirklich umgesetzt ist
+
+- Lokale Projektverwaltung in IndexedDB
+- Kartenbasierter Startpunkt und Richtungsdefinition
+- Manuelle Terrain- und Stuetzenerfassung
+- Seilberechnung mit Kapazitaetspruefung
+- Anzeige von Ankerkraeften und Stuetzenauflagen
+- Interaktives D3-Profil mit Fullscreen, Zoom/Pan und Punktlastsimulation
+- Export nach PDF, DXF und JSON
+- Production-Service-Worker
+
+## Wichtige Einschraenkungen
+
+- Kein expliziter Endpunkt auf der Karte
+- Keine dedizierte UI fuer Stationsparameter
+- `presetModified$` im State-Service ist noch nicht implementiert
+- Testabdeckung ist klein
