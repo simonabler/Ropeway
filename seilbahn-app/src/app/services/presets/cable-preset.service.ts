@@ -117,13 +117,17 @@ export class CablePresetService {
    * Apply preset to cable configuration
    */
   applyCablePreset(preset: CableParameterSet): CableConfiguration {
+    // Derive H from preset sag (reference span 100m): H = w*L²/(8*f)
+    const refSpan = 100;
+    const horizontalTensionKN = (preset.carrier.wNPerM * refSpan * refSpan) / (8 * preset.carrier.sagFM) / 1000;
+
     return {
       cableType: 'carrying',
       cableWeightPerMeter: preset.carrier.wNPerM / 9.81, // Convert N/m to kg/m
       maxLoad: preset.load.PN / 9.81, // Convert N to kg
       safetyFactor: preset.carrier.safetyFactor,
       minGroundClearance: preset.limits.minClearanceM,
-      allowedSag: preset.carrier.sagFM,
+      horizontalTensionKN,
       // New cable properties
       cableDiameterMm: preset.cable.diameterMm,
       minBreakingStrengthNPerMm2: preset.cable.breakingStrengthNPerMm2 || this.deriveStrengthFromBreakingLoad(preset.cable.diameterMm, preset.cable.breakingStrengthKN),
@@ -223,6 +227,12 @@ export class CablePresetService {
     description: string,
     cable: CableConfiguration
   ): Omit<CableParameterSet, 'id' | 'isSystemPreset' | 'createdAt' | 'updatedAt'> {
+    // Derive sag from H for preset storage (reference span 100m): f = w*L²/(8*H)
+    const refSpan = 100;
+    const wNPerM = cable.cableWeightPerMeter * 9.81;
+    const H_N = (cable.horizontalTensionKN || 15) * 1000;
+    const sagFM = (wNPerM * refSpan * refSpan) / (8 * H_N);
+
     return {
       name,
       description,
@@ -233,8 +243,8 @@ export class CablePresetService {
         material: cable.cableMaterial
       },
       carrier: {
-        wNPerM: cable.cableWeightPerMeter * 9.81, // Convert kg/m to N/m
-        sagFM: cable.allowedSag || 3.0,
+        wNPerM,
+        sagFM,
         safetyFactor: cable.safetyFactor,
         kCoeff: 1600 // Legacy field
       },

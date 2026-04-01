@@ -120,17 +120,19 @@ export class CalculationResults {
           ? this.terrain[this.terrain.length - 1].terrainHeight
           : 0;
 
-        // Update project with end station position
-        const updatedProject = {
-          ...project,
-          endStation: {
-            ...project.endStation,
+        // Keep end station persisted in project state
+        if (
+          project.endStation.stationLength !== totalLength ||
+          project.endStation.terrainHeight !== endHeight
+        ) {
+          this.projectStateService.updateEndStation({
             stationLength: totalLength,
             terrainHeight: endHeight
-          }
-        };
+          });
+        }
 
-        const result = this.cableCalculatorService.calculateCable(updatedProject);
+        const projectForCalculation = this.projectStateService.currentProject ?? project;
+        const result = this.cableCalculatorService.calculateCable(projectForCalculation);
         this.projectStateService.setCalculationResult(result);
         this.lastCalculation.set(new Date());
       } catch (error) {
@@ -214,7 +216,7 @@ export class CalculationResults {
       cable.maxLoad,
       cable.safetyFactor,
       cable.minGroundClearance,
-      cable.allowedSag,
+      cable.horizontalTensionKN,
       cable.cableDiameterMm,
       cable.minBreakingStrengthNPerMm2,
       cable.cableMaterial,
@@ -228,5 +230,9 @@ export class CalculationResults {
    */
   formatTime(date: Date): string {
     return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  get requiredClearance(): number {
+    return this.project?.cableConfig?.minGroundClearance ?? 2;
   }
 }

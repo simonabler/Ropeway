@@ -76,8 +76,8 @@
           <span class="value">{{ cableWeightNPerM.toFixed(1) }} N/m</span>
         </div>
         <div class="summary-row">
-          <span class="label">Durchhang:</span>
-          <span class="value">{{ sagMeters.toFixed(1) }} m</span>
+          <span class="label">Seilzug (H):</span>
+          <span class="value">{{ horizontalTensionKN.toFixed(1) }} kN</span>
         </div>
         <div class="summary-row">
           <span class="label">Sicherheitsfaktor:</span>
@@ -198,24 +198,25 @@
         </div>
       </div>
 
-      <!-- Sag -->
+      <!-- Horizontal Tension -->
       <div class="input-group">
-        <label>Durchhang [m]</label>
+        <label>Seilzug H [kN]</label>
         <div class="numeric-input">
-          <button class="btn-adjust" (click)="incrementSag(-0.5)">-0.5</button>
-          <button class="btn-adjust" (click)="incrementSag(-0.1)">-0.1</button>
+          <button class="btn-adjust" (click)="incrementTension(-5)">-5</button>
+          <button class="btn-adjust" (click)="incrementTension(-1)">-1</button>
           <input
             type="number"
-            [(ngModel)]="sagMeters"
+            [(ngModel)]="horizontalTensionKN"
             (ngModelChange)="onValueChange()"
             inputmode="decimal"
-            min="0.5"
-            max="20"
-            step="0.1"
+            min="2"
+            max="100"
+            step="1"
           />
-          <button class="btn-adjust" (click)="incrementSag(0.1)">+0.1</button>
-          <button class="btn-adjust" (click)="incrementSag(0.5)">+0.5</button>
+          <button class="btn-adjust" (click)="incrementTension(1)">+1</button>
+          <button class="btn-adjust" (click)="incrementTension(5)">+5</button>
         </div>
+        <span class="hint">Durchhang ergibt sich aus H, Seilgewicht und Spannweite</span>
       </div>
 
       <!-- Safety Factor -->

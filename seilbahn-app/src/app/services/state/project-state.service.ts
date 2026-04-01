@@ -122,6 +122,7 @@ export class ProjectStateService {
         maxLoad: 500,
         safetyFactor: 5,
         minGroundClearance: 2,
+        horizontalTensionKN: 15,
         cableDiameterMm: 16,
         minBreakingStrengthNPerMm2: 1960,
         cableMaterial: 'steel'
@@ -158,8 +159,12 @@ export class ProjectStateService {
   async saveProject(): Promise<void> {
     const project = this.currentProjectSubject.value;
     if (project) {
-      project.modifiedAt = new Date();
-      await this.indexedDbService.saveProject(project);
+      const updatedProject: Project = {
+        ...project,
+        modifiedAt: new Date()
+      };
+      this.currentProjectSubject.next(updatedProject);
+      await this.indexedDbService.saveProject(updatedProject);
       this.isDirtySubject.next(false);
     }
   }
@@ -177,13 +182,20 @@ export class ProjectStateService {
    * Update terrain segments
    */
   updateTerrainSegments(segments: TerrainSegment[]): void {
-    this.terrainSegmentsSubject.next(segments);
+    const updatedSegments = [...segments];
+    this.terrainSegmentsSubject.next(updatedSegments);
     const project = this.currentProjectSubject.value;
     if (project) {
-      project.terrainProfile.segments = segments;
-      project.terrainProfile.totalLength = this.calculateTotalLength(segments);
-      project.terrainProfile.elevationChange = this.calculateElevationChange(segments);
-      this.currentProjectSubject.next(project);
+      const updatedProject: Project = {
+        ...project,
+        terrainProfile: {
+          ...project.terrainProfile,
+          segments: updatedSegments,
+          totalLength: this.calculateTotalLength(updatedSegments),
+          elevationChange: this.calculateElevationChange(updatedSegments)
+        }
+      };
+      this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
   }
@@ -200,11 +212,15 @@ export class ProjectStateService {
    * Update supports
    */
   updateSupports(supports: Support[]): void {
-    this.supportsSubject.next(supports);
+    const updatedSupports = [...supports];
+    this.supportsSubject.next(updatedSupports);
     const project = this.currentProjectSubject.value;
     if (project) {
-      project.supports = supports;
-      this.currentProjectSubject.next(project);
+      const updatedProject: Project = {
+        ...project,
+        supports: updatedSupports
+      };
+      this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
   }
@@ -223,8 +239,11 @@ export class ProjectStateService {
   updateCableConfig(config: CableConfiguration): void {
     const project = this.currentProjectSubject.value;
     if (project) {
-      project.cableConfig = config;
-      this.currentProjectSubject.next(project);
+      const updatedProject: Project = {
+        ...project,
+        cableConfig: { ...config }
+      };
+      this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
   }
@@ -235,8 +254,11 @@ export class ProjectStateService {
   updateSolverType(solverType: Project['solverType']): void {
     const project = this.currentProjectSubject.value;
     if (project) {
-      project.solverType = solverType;
-      this.currentProjectSubject.next(project);
+      const updatedProject: Project = {
+        ...project,
+        solverType
+      };
+      this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
   }
@@ -248,9 +270,12 @@ export class ProjectStateService {
     this.calculationResultSubject.next(result);
     const project = this.currentProjectSubject.value;
     if (project) {
-      project.calculationResult = result;
-      project.status = result.isValid ? 'calculated' : 'draft';
-      this.currentProjectSubject.next(project);
+      const updatedProject: Project = {
+        ...project,
+        calculationResult: result,
+        status: result.isValid ? 'calculated' : 'draft'
+      };
+      this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
   }
@@ -262,8 +287,11 @@ export class ProjectStateService {
     this.selectedPresetIdSubject.next(presetId);
     const project = this.currentProjectSubject.value;
     if (project) {
-      project.cablePresetId = presetId;
-      this.currentProjectSubject.next(project);
+      const updatedProject: Project = {
+        ...project,
+        cablePresetId: presetId
+      };
+      this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
   }
@@ -275,8 +303,11 @@ export class ProjectStateService {
     this.selectedPresetIdSubject.next(presetId);
     const project = this.currentProjectSubject.value;
     if (project) {
-      project.cablePresetId = presetId || undefined;
-      this.currentProjectSubject.next(project);
+      const updatedProject: Project = {
+        ...project,
+        cablePresetId: presetId || undefined
+      };
+      this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
   }
@@ -287,8 +318,11 @@ export class ProjectStateService {
   updateProjectMetadata(updates: Partial<Pick<Project, 'name' | 'notes'>>): void {
     const project = this.currentProjectSubject.value;
     if (project) {
-      Object.assign(project, updates);
-      this.currentProjectSubject.next(project);
+      const updatedProject: Project = {
+        ...project,
+        ...updates
+      };
+      this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
   }
@@ -299,9 +333,12 @@ export class ProjectStateService {
   updateStartPointAndAzimuth(startPoint: GeoPoint, azimuth: number): void {
     const project = this.currentProjectSubject.value;
     if (project) {
-      project.startPoint = startPoint;
-      project.azimuth = azimuth;
-      this.currentProjectSubject.next(project);
+      const updatedProject: Project = {
+        ...project,
+        startPoint,
+        azimuth
+      };
+      this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
   }
@@ -312,8 +349,11 @@ export class ProjectStateService {
   updateStartPoint(startPoint: GeoPoint): void {
     const project = this.currentProjectSubject.value;
     if (project) {
-      project.startPoint = startPoint;
-      this.currentProjectSubject.next(project);
+      const updatedProject: Project = {
+        ...project,
+        startPoint
+      };
+      this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
   }
@@ -324,8 +364,29 @@ export class ProjectStateService {
   updateAzimuth(azimuth: number): void {
     const project = this.currentProjectSubject.value;
     if (project) {
-      project.azimuth = azimuth;
-      this.currentProjectSubject.next(project);
+      const updatedProject: Project = {
+        ...project,
+        azimuth
+      };
+      this.currentProjectSubject.next(updatedProject);
+      this.isDirtySubject.next(true);
+    }
+  }
+
+  /**
+   * Update end station data
+   */
+  updateEndStation(updates: Partial<EndStation>): void {
+    const project = this.currentProjectSubject.value;
+    if (project) {
+      const updatedProject: Project = {
+        ...project,
+        endStation: {
+          ...project.endStation,
+          ...updates
+        }
+      };
+      this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
   }
@@ -342,7 +403,7 @@ export class ProjectStateService {
    */
   private calculateElevationChange(segments: TerrainSegment[]): number {
     if (segments.length === 0) return 0;
-    const firstHeight = segments[0].terrainHeight;
+    const firstHeight = segments[0].terrainHeight - (segments[0].slopePercent / 100) * segments[0].lengthMeters;
     const lastHeight = segments[segments.length - 1].terrainHeight;
     return lastHeight - firstHeight;
   }

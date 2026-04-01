@@ -199,6 +199,67 @@
   color: $gray-400;
 }
 
+// Live Capacity Display
+.live-capacity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  padding: $spacing-sm;
+  margin-top: $spacing-sm;
+  background: $gray-50;
+  border-radius: $border-radius-sm;
+  border: 2px solid $gray-300;
+
+  &.ok {
+    background: lighten($success-color, 45%);
+    border-color: $success-color;
+  }
+
+  &.warning {
+    background: lighten($warning-color, 35%);
+    border-color: $warning-color;
+  }
+
+  &.fail {
+    background: lighten($error-color, 35%);
+    border-color: $error-color;
+    animation: pulse-fail 1s infinite;
+  }
+
+  .capacity-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    flex: 1 1 auto;
+    min-width: 100px;
+
+    &.highlight {
+      font-weight: 600;
+    }
+  }
+
+  .capacity-label {
+    font-size: $font-size-sm;
+    color: $gray-600;
+  }
+
+  .capacity-value {
+    font-size: $font-size-base;
+    font-weight: 500;
+    color: $gray-800;
+  }
+
+  .status-icon {
+    font-size: $font-size-sm;
+    margin-left: auto;
+  }
+}
+
+@keyframes pulse-fail {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
 // Toggle Buttons
 .toggle-buttons {
   display: flex;

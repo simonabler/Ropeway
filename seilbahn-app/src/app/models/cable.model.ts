@@ -7,7 +7,8 @@ export interface CableConfiguration {
   maxLoad: number;                       // kg (load per span or total)
   safetyFactor: number;                  // Default: 5
   minGroundClearance: number;            // meters
-  allowedSag?: number;                   // meters or ratio
+  allowedSag?: number;                   // DEPRECATED: derived from H, kept for backward compat
+  horizontalTensionKN: number;           // kN - primary parameter (Seilzug)
 
   // Cable properties (INPUT - fixed cable selection)
   cableDiameterMm: number;               // mm - user selects actual cable

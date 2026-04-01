@@ -181,7 +181,7 @@
 
           <!-- Critical Clearance -->
           @if (getCriticalSpan(); as critical) {
-            <div class="clearance-info" [class.warning]="critical.minClearance < 2">
+            <div class="clearance-info" [class.warning]="critical.minClearance < requiredClearance">
               <h4>Minimale Bodenfreiheit</h4>
               <div class="clearance-value">
                 <span class="value">{{ critical.minClearance.toFixed(2) }} m</span>
@@ -210,7 +210,7 @@
                         <span class="detail-label">H:</span>
                         <span class="detail-value">{{ span.horizontalForce.toFixed(1) }} kN</span>
                       </div>
-                      <div class="detail-row" [class.warning]="span.minClearance < 2">
+                      <div class="detail-row" [class.warning]="span.minClearance < requiredClearance">
                         <span class="detail-label">Freiraum:</span>
                         <span class="detail-value">{{ span.minClearance.toFixed(2) }} m</span>
                       </div>

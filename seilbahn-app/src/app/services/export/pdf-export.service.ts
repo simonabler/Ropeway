@@ -265,7 +265,7 @@ export class PdfExportService {
     doc.text('Stützen', this.margin, y);
     y += 12;
 
-    const supports = project.supports.sort((a, b) => a.stationLength - b.stationLength);
+    const supports = [...project.supports].sort((a, b) => a.stationLength - b.stationLength);
 
     // Table header
     doc.setFontSize(9);

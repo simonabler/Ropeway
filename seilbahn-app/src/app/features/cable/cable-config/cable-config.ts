@@ -38,7 +38,7 @@ export class CableConfig {
 
   // Form values (N/m, N, etc. - SI units)
   cableWeightNPerM = 20;      // Seilgewicht N/m
-  sagMeters = 3;              // Durchhang m
+  horizontalTensionKN = 15;   // Seilzug kN
   safetyFactor = 5;           // Sicherheitsfaktor
   loadN = 5000;               // Nutzlast N
   minClearanceM = 2;          // Min. Bodenfreiheit m
@@ -90,7 +90,7 @@ export class CableConfig {
       this.loadN = config.maxLoad * 9.81; // kg to N
       this.safetyFactor = config.safetyFactor;
       this.minClearanceM = config.minGroundClearance;
-      this.sagMeters = config.allowedSag || 3;
+      this.horizontalTensionKN = config.horizontalTensionKN || 15;
       // NEW: Load cable diameter and material
       this.cableDiameterMm = config.cableDiameterMm || 16;
       this.minBreakingStrengthNPerMm2 = config.minBreakingStrengthNPerMm2 || 1960;
@@ -115,10 +115,12 @@ export class CableConfig {
 
     // Apply preset values
     this.cableWeightNPerM = preset.carrier.wNPerM;
-    this.sagMeters = preset.carrier.sagFM;
     this.safetyFactor = preset.carrier.safetyFactor;
     this.loadN = preset.load.PN;
     this.minClearanceM = preset.limits.minClearanceM;
+    // Derive H from preset sag (reference span 100m): H = w*L²/(8*f)
+    const refSpan = 100;
+    this.horizontalTensionKN = (preset.carrier.wNPerM * refSpan * refSpan) / (8 * preset.carrier.sagFM) / 1000;
     // NEW: Apply cable diameter and material
     this.cableDiameterMm = preset.cable.diameterMm;
     this.minBreakingStrengthNPerMm2 = preset.cable.breakingStrengthNPerMm2 || 1960;
@@ -158,8 +160,11 @@ export class CableConfig {
     if (Math.abs(this.cableWeightNPerM - preset.carrier.wNPerM) > 0.1) {
       mods.push({ field: 'weight', label: 'Seilgewicht', current: this.cableWeightNPerM, preset: preset.carrier.wNPerM });
     }
-    if (Math.abs(this.sagMeters - preset.carrier.sagFM) > 0.01) {
-      mods.push({ field: 'sag', label: 'Durchhang', current: this.sagMeters, preset: preset.carrier.sagFM });
+    // Compare H (derive preset H from sag for reference span 100m)
+    const refSpan = 100;
+    const presetH = (preset.carrier.wNPerM * refSpan * refSpan) / (8 * preset.carrier.sagFM) / 1000;
+    if (Math.abs(this.horizontalTensionKN - presetH) > 0.5) {
+      mods.push({ field: 'tension', label: 'Seilzug H', current: this.horizontalTensionKN, preset: presetH });
     }
     if (Math.abs(this.safetyFactor - preset.carrier.safetyFactor) > 0.01) {
       mods.push({ field: 'safety', label: 'Sicherheitsfaktor', current: this.safetyFactor, preset: preset.carrier.safetyFactor });
@@ -201,8 +206,8 @@ export class CableConfig {
     if (this.cableWeightNPerM < 5 || this.cableWeightNPerM > 200) {
       errs.push('Seilgewicht: 5-200 N/m');
     }
-    if (this.sagMeters < 0.5 || this.sagMeters > 20) {
-      errs.push('Durchhang: 0.5-20 m');
+    if (this.horizontalTensionKN < 2 || this.horizontalTensionKN > 100) {
+      errs.push('Seilzug: 2-100 kN');
     }
     if (this.safetyFactor < 2 || this.safetyFactor > 10) {
       errs.push('Sicherheitsfaktor: 2-10');
@@ -237,8 +242,7 @@ export class CableConfig {
       maxLoad: this.loadN / 9.81, // N to kg
       safetyFactor: this.safetyFactor,
       minGroundClearance: this.minClearanceM,
-      allowedSag: this.sagMeters,
-      // NEW: Cable physical properties
+      horizontalTensionKN: this.horizontalTensionKN,
       cableDiameterMm: this.cableDiameterMm,
       minBreakingStrengthNPerMm2: this.minBreakingStrengthNPerMm2,
       cableMaterial: this.cableMaterial
@@ -273,8 +277,8 @@ export class CableConfig {
     this.onValueChange();
   }
 
-  incrementSag(amount: number) {
-    this.sagMeters = Math.max(0.5, Math.min(20, +(this.sagMeters + amount).toFixed(1)));
+  incrementTension(amount: number) {
+    this.horizontalTensionKN = Math.max(2, Math.min(100, +(this.horizontalTensionKN + amount).toFixed(1)));
     this.onValueChange();
   }
 
@@ -401,7 +405,7 @@ export class CableConfig {
       maxLoad: this.loadN / 9.81,
       safetyFactor: this.safetyFactor,
       minGroundClearance: this.minClearanceM,
-      allowedSag: this.sagMeters,
+      horizontalTensionKN: this.horizontalTensionKN,
       cableDiameterMm: this.cableDiameterMm,
       minBreakingStrengthNPerMm2: this.minBreakingStrengthNPerMm2,
       cableMaterial: this.cableMaterial

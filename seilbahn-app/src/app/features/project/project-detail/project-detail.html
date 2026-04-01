@@ -33,6 +33,8 @@
         </div>
         <app-map-container
           [profileLengthMeters]="project()?.terrainProfile?.totalLength ?? 0"
+          [initialStartPoint]="mapStartPoint"
+          [initialAzimuth]="project()?.azimuth ?? 0"
           (pointsChanged)="onMapPointsChanged($event)">
         </app-map-container>
       </section>

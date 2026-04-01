@@ -91,6 +91,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
   isZoomed = signal(false);
   isFullscreen = signal(false);
   private chartInitialized = false;
+  private readonly fullscreenChangeHandler = () => this.onFullscreenChange();
 
   // === Cable Simulation Controls ===
   // Horizontal tension (pre-tension in kN)
@@ -125,6 +126,12 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
   endAnchor = signal<AnchorPointData | null>(null);
   showAnchorForces = signal(true);
 
+  // Live T_max and capacity check
+  liveMaxTension = signal(0); // kN
+  liveCapacityStatus = signal<'ok' | 'warning' | 'fail'>('ok');
+  liveUtilizationPercent = signal(0);
+  maxAllowedTensionKN = signal(0);
+
   constructor(private projectStateService: ProjectStateService) {
     this._terrain = toSignal(this.projectStateService.terrain$, { initialValue: [] as TerrainSegment[] });
     this._supports = toSignal(this.projectStateService.supports$, { initialValue: [] as Support[] });
@@ -143,6 +150,8 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       const project = this.projectStateService.currentProject;
       if (project) {
         this.cableWeight.set(project.cableConfig.cableWeightPerMeter * 9.81); // kg/m to N/m
+        // Sync H from config
+        this.horizontalTension.set(project.cableConfig.horizontalTensionKN || 15);
         const projectId = project.id;
         if (projectId !== this.lastProjectId) {
           this.lastProjectId = projectId;
@@ -216,7 +225,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     // Listen for fullscreen changes
-    document.addEventListener('fullscreenchange', this.onFullscreenChange.bind(this));
+    document.addEventListener('fullscreenchange', this.fullscreenChangeHandler);
   }
 
   private onFullscreenChange(): void {
@@ -237,7 +246,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    document.removeEventListener('fullscreenchange', this.onFullscreenChange.bind(this));
+    document.removeEventListener('fullscreenchange', this.fullscreenChangeHandler);
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }
@@ -422,6 +431,9 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     const loadedCablePoints = this.calculateLoadedCable();
     this.maxLoadEnvelope = this.calculateMaxLoadEnvelope();
 
+    // Calculate live T_max and capacity check
+    this.calculateLiveCapacity();
+
     const xExtent = this.calculateXExtent(terrainPoints, this.maxLoadEnvelope, emptyCablePoints, loadedCablePoints);
     const yExtent = this.calculateYExtent(terrainPoints, this.maxLoadEnvelope, emptyCablePoints, loadedCablePoints);
 
@@ -458,6 +470,77 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
   toggleAnchorForces(): void {
     this.showAnchorForces.set(!this.showAnchorForces());
     this.updateChart();
+  }
+
+  /**
+   * Calculate live T_max and cable capacity check
+   * T_max = sqrt(H² + V²) where V is the max vertical force
+   */
+  private calculateLiveCapacity(): void {
+    const project = this.projectStateService.currentProject;
+    if (!project) return;
+
+    const H = this.horizontalTension() * 1000; // N
+    const w = this.cableWeight(); // N/m
+    const P = this.pointLoad(); // N
+
+    const allPoints = this.getSupportPoints();
+    if (allPoints.length < 2) return;
+    const totalLength = allPoints[allPoints.length - 1].x - allPoints[0].x;
+    const globalLoadX = allPoints[0].x + (this.loadPositionPercent() / 100) * totalLength;
+
+    // Calculate max vertical force across all spans
+    let maxV = 0;
+    for (let i = 0; i < allPoints.length - 1; i++) {
+      const start = allPoints[i];
+      const end = allPoints[i + 1];
+      const L = end.x - start.x;
+      const dh = end.y - start.y;
+      const isLastSpan = i === allPoints.length - 2;
+
+      if (L <= 0) continue;
+
+      // Vertical force at supports: V = w*L/2 + H*dh/L + P contribution
+      const V_distributed = w * L / 2;
+      const V_slope = H * Math.abs(dh) / L;
+      const spanHasLoad =
+        globalLoadX >= start.x &&
+        (isLastSpan ? globalLoadX <= end.x : globalLoadX < end.x);
+      const V_pointLoad = spanHasLoad ? P / 2 : 0;
+
+      const V_total = V_distributed + V_slope + V_pointLoad;
+      maxV = Math.max(maxV, V_total);
+    }
+
+    // T_max = sqrt(H² + V²)
+    const T_max_N = Math.sqrt(H * H + maxV * maxV);
+    const T_max_kN = T_max_N / 1000;
+    this.liveMaxTension.set(T_max_kN);
+
+    // Calculate max allowed tension from cable properties
+    const diameterMm = project.cableConfig.cableDiameterMm;
+    const strengthNPerMm2 = project.cableConfig.minBreakingStrengthNPerMm2;
+    const safetyFactor = project.cableConfig.safetyFactor;
+
+    const areaMm2 = Math.PI * Math.pow(diameterMm / 2, 2);
+    const breakingLoadN = areaMm2 * strengthNPerMm2;
+    const allowedLoadN = breakingLoadN / safetyFactor;
+    const allowedLoadKN = allowedLoadN / 1000;
+
+    this.maxAllowedTensionKN.set(allowedLoadKN);
+
+    // Calculate utilization
+    const utilization = (T_max_kN / allowedLoadKN) * 100;
+    this.liveUtilizationPercent.set(utilization);
+
+    // Determine status
+    if (utilization > 100) {
+      this.liveCapacityStatus.set('fail');
+    } else if (utilization > 80) {
+      this.liveCapacityStatus.set('warning');
+    } else {
+      this.liveCapacityStatus.set('ok');
+    }
   }
 
   // === Cable Calculation Methods ===
@@ -816,9 +899,13 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
    */
   private getSupportPoints(): ChartPoint[] {
     const points: ChartPoint[] = [];
+    const project = this.projectStateService.currentProject;
+    const startAnchorHeight = project
+      ? project.startStation.terrainHeight + project.startStation.anchorPoint.heightAboveTerrain
+      : 0;
 
-    // Start anchor - at ground level (terrain height = 0)
-    points.push({ x: 0, y: 0 });
+    // Start anchor
+    points.push({ x: 0, y: startAnchorHeight });
 
     // Supports
     for (const support of this.supports) {
@@ -828,12 +915,15 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       });
     }
 
-    // End anchor - at ground level (last terrain height)
+    // End anchor
     if (this.terrain.length > 0) {
       const lastTerrain = this.terrain[this.terrain.length - 1];
+      const endAnchorHeight = project
+        ? project.endStation.terrainHeight + project.endStation.anchorPoint.heightAboveTerrain
+        : lastTerrain.terrainHeight;
       points.push({
         x: lastTerrain.stationLength,
-        y: lastTerrain.terrainHeight
+        y: endAnchorHeight
       });
     }
 
@@ -849,6 +939,9 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
    * Calculate forces at anchor points (start and end)
    * Anchor points are at ground level (first and last terrain segment)
    * Forces include: horizontal (H), vertical (V), resultant (T), angle
+   *
+   * IMPORTANT: With supports in between, we calculate forces for the
+   * FIRST span (anchor to first support) and LAST span (last support to anchor)
    */
   private calculateAnchorForces(): void {
     if (this.terrain.length === 0) {
@@ -862,70 +955,81 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     const P = this.pointLoad(); // N
     const loadPercent = this.loadPositionPercent() / 100;
 
-    // Get total cable length
-    const lastTerrain = this.terrain[this.terrain.length - 1];
-    const totalLength = lastTerrain.stationLength;
+    // Get support points (anchor at start, supports, anchor at end)
+    const allPoints = this.getSupportPoints();
+    if (allPoints.length < 2) return;
 
-    // Start anchor position - at ground level (first terrain point)
-    const startX = 0;
-    const startTerrainY = 0; // First terrain point is at 0
-    const startAnchorY = 0;  // Anchor at ground level
+    const totalLength = allPoints[allPoints.length - 1].x - allPoints[0].x;
+    const globalLoadX = allPoints[0].x + loadPercent * totalLength;
 
-    // End anchor position - at ground level (last terrain point)
-    const endX = totalLength;
-    const endTerrainY = lastTerrain.terrainHeight;
-    const endAnchorY = lastTerrain.terrainHeight; // Anchor at ground level
+    // === FIRST SPAN: Start anchor to first support ===
+    const firstSpanStart = allPoints[0];
+    const firstSpanEnd = allPoints[1];
+    const L1 = firstSpanEnd.x - firstSpanStart.x;
+    const dh1 = firstSpanEnd.y - firstSpanStart.y;
 
-    // Height difference and span
-    const dh = endAnchorY - startAnchorY;
-    const L = totalLength;
+    // Vertical force at start anchor (pointing UP into the cable)
+    // V = w*L/2 + H*tan(alpha) where alpha is cable slope at anchor
+    // For parabola: slope at x=0 is dy/dx = dh/L + 4f/L where f = w*L²/(8*H)
+    const f1 = (w * L1 * L1) / (8 * H);
+    const slope_start = dh1 / L1 + 4 * f1 / L1;
+    let V_start_empty = H * slope_start; // Positive = cable pulls UP at start
 
-    // === Calculate vertical forces at anchors ===
-    // For parabolic cable: V_start = w*L/2 - H*dh/L
-    //                      V_end = w*L/2 + H*dh/L
+    // Check if load is in first span
+    const loadInFirstSpan = globalLoadX >= firstSpanStart.x && globalLoadX <= firstSpanEnd.x;
+    let V_start_loaded = V_start_empty;
+    if (loadInFirstSpan && P > 0) {
+      const a1 = globalLoadX - firstSpanStart.x;
+      const b1 = L1 - a1;
+      // Point load reaction at start: P * b / L
+      V_start_loaded += P * b1 / L1;
+    }
 
-    // Empty cable (only cable weight)
-    const V_start_empty = (w * L / 2) - (H * dh / L);
-    const V_end_empty = (w * L / 2) + (H * dh / L);
+    // === LAST SPAN: Last support to end anchor ===
+    const lastSpanStart = allPoints[allPoints.length - 2];
+    const lastSpanEnd = allPoints[allPoints.length - 1];
+    const Ln = lastSpanEnd.x - lastSpanStart.x;
+    const dhn = lastSpanEnd.y - lastSpanStart.y;
 
-    // Loaded cable (cable weight + point load)
-    // Point load at position a from start
-    const a = loadPercent * L;
-    const b = L - a;
+    // Vertical force at end anchor (pointing UP into the cable)
+    // At x=L, slope is dy/dx = dh/L - 4f/L
+    const fn = (w * Ln * Ln) / (8 * H);
+    const slope_end = dhn / Ln - 4 * fn / Ln;
+    let V_end_empty = -H * slope_end; // Negative slope means cable pulls UP
 
-    // Additional vertical forces from point load
-    // V_start_load = P * b / L
-    // V_end_load = P * a / L
-    const V_start_load = P * b / L;
-    const V_end_load = P * a / L;
+    // Check if load is in last span
+    const loadInLastSpan = globalLoadX >= lastSpanStart.x && globalLoadX <= lastSpanEnd.x;
+    let V_end_loaded = V_end_empty;
+    if (loadInLastSpan && P > 0) {
+      const an = globalLoadX - lastSpanStart.x;
+      // Point load reaction at end: P * a / L
+      V_end_loaded += P * an / Ln;
+    }
 
-    const V_start_loaded = V_start_empty + V_start_load;
-    const V_end_loaded = V_end_empty + V_end_load;
-
-    // Resultant forces
+    // Resultant forces (always positive - magnitude)
     const T_start_empty = Math.sqrt(H * H + V_start_empty * V_start_empty);
     const T_start_loaded = Math.sqrt(H * H + V_start_loaded * V_start_loaded);
     const T_end_empty = Math.sqrt(H * H + V_end_empty * V_end_empty);
     const T_end_loaded = Math.sqrt(H * H + V_end_loaded * V_end_loaded);
 
-    // Angles (from horizontal)
+    // Angles (from horizontal, positive = upward pull)
     const angle_start_empty = Math.atan2(Math.abs(V_start_empty), H) * 180 / Math.PI;
     const angle_start_loaded = Math.atan2(Math.abs(V_start_loaded), H) * 180 / Math.PI;
     const angle_end_empty = Math.atan2(Math.abs(V_end_empty), H) * 180 / Math.PI;
     const angle_end_loaded = Math.atan2(Math.abs(V_end_loaded), H) * 180 / Math.PI;
 
     // Convert to kN
-    const toKN = (n: number) => n / 1000;
+    const toKN = (n: number) => Math.abs(n) / 1000;
 
     this.startAnchor.set({
       type: 'start',
-      x: startX,
-      terrainY: startTerrainY,
-      anchorY: startAnchorY,
+      x: firstSpanStart.x,
+      terrainY: this.interpolateTerrainHeight(firstSpanStart.x),
+      anchorY: firstSpanStart.y,
       forces: {
         horizontal: toKN(H),
-        verticalEmpty: toKN(Math.abs(V_start_empty)),
-        verticalLoaded: toKN(Math.abs(V_start_loaded)),
+        verticalEmpty: toKN(V_start_empty),
+        verticalLoaded: toKN(V_start_loaded),
         resultantEmpty: toKN(T_start_empty),
         resultantLoaded: toKN(T_start_loaded),
         angleEmpty: angle_start_empty,
@@ -935,19 +1039,23 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
     this.endAnchor.set({
       type: 'end',
-      x: endX,
-      terrainY: endTerrainY,
-      anchorY: endAnchorY,
+      x: lastSpanEnd.x,
+      terrainY: this.interpolateTerrainHeight(lastSpanEnd.x),
+      anchorY: lastSpanEnd.y,
       forces: {
         horizontal: toKN(H),
-        verticalEmpty: toKN(Math.abs(V_end_empty)),
-        verticalLoaded: toKN(Math.abs(V_end_loaded)),
+        verticalEmpty: toKN(V_end_empty),
+        verticalLoaded: toKN(V_end_loaded),
         resultantEmpty: toKN(T_end_empty),
         resultantLoaded: toKN(T_end_loaded),
         angleEmpty: angle_end_empty,
         angleLoaded: angle_end_loaded
       }
     });
+  }
+
+  get minClearanceThreshold(): number {
+    return this.projectStateService.currentProject?.cableConfig.minGroundClearance ?? 2;
   }
 
   /**

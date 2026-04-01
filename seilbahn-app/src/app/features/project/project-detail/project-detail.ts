@@ -67,10 +67,33 @@ export class ProjectDetail implements OnInit {
    * Handle map points changed
    */
   onMapPointsChanged(event: { start: GeoPoint | null; azimuth: number }): void {
+    const currentProject = this.project();
+    if (!currentProject) return;
+
     if (event.start) {
+      const samePoint =
+        currentProject.startPoint.lat === event.start.lat &&
+        currentProject.startPoint.lng === event.start.lng;
+      const sameAzimuth = currentProject.azimuth === event.azimuth;
+      if (samePoint && sameAzimuth) return;
+
       this.projectStateService.updateStartPointAndAzimuth(event.start, event.azimuth);
-    } else {
+      return;
+    }
+
+    const hasStartPoint =
+      currentProject.startPoint.lat !== 0 ||
+      currentProject.startPoint.lng !== 0 ||
+      currentProject.azimuth !== 0;
+    if (hasStartPoint) {
       this.projectStateService.updateStartPointAndAzimuth({ lat: 0, lng: 0 }, 0);
     }
+  }
+
+  get mapStartPoint(): GeoPoint | null {
+    const point = this.project()?.startPoint;
+    if (!point) return null;
+    if (point.lat === 0 && point.lng === 0) return null;
+    return point;
   }
 }

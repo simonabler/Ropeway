@@ -93,6 +93,32 @@
         </div>
       </div>
 
+      <!-- Live Capacity Check -->
+      <div class="live-capacity"
+           [class.ok]="liveCapacityStatus() === 'ok'"
+           [class.warning]="liveCapacityStatus() === 'warning'"
+           [class.fail]="liveCapacityStatus() === 'fail'">
+        <div class="capacity-row">
+          <span class="capacity-label">T_max:</span>
+          <span class="capacity-value">{{ liveMaxTension().toFixed(1) }} kN</span>
+        </div>
+        <div class="capacity-row">
+          <span class="capacity-label">Zulässig:</span>
+          <span class="capacity-value">{{ maxAllowedTensionKN().toFixed(1) }} kN</span>
+        </div>
+        <div class="capacity-row highlight">
+          <span class="capacity-label">Auslastung:</span>
+          <span class="capacity-value">{{ liveUtilizationPercent().toFixed(0) }}%</span>
+          @if (liveCapacityStatus() === 'fail') {
+            <span class="status-icon">⚠ ÜBERLASTET</span>
+          } @else if (liveCapacityStatus() === 'warning') {
+            <span class="status-icon">⚠</span>
+          } @else {
+            <span class="status-icon">✓</span>
+          }
+        </div>
+      </div>
+
       <!-- Toggle Buttons -->
       <div class="toggle-buttons">
         <button
@@ -131,7 +157,7 @@
 
       <!-- Critical Info -->
       @if (criticalPoint() && showCriticalPoint()) {
-        <div class="critical-info" [class.warning]="criticalPoint()!.clearance < 2">
+        <div class="critical-info" [class.warning]="criticalPoint()!.clearance < minClearanceThreshold">
           <span class="critical-icon">⚠</span>
           <div class="critical-details">
             <span class="critical-label">Min. Bodenfreiheit:</span>

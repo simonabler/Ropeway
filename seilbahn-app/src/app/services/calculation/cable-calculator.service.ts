@@ -59,8 +59,9 @@ export class CableCalculatorService {
     const cableWeightN = project.cableConfig.cableWeightPerMeter * 9.81;
     const pointLoadN = project.cableConfig.maxLoad * 9.81;
 
-    // Default sag if not specified
-    const sagM = project.cableConfig.allowedSag || 3.0;
+    // Horizontal tension from config (kN → N)
+    // H is the primary parameter; sag is derived per span as f = w*L²/(8*H)
+    const globalH = (project.cableConfig.horizontalTensionKN || 15) * 1000;
 
     if (solverType === 'catenary-piecewise') {
       warnings.push({
@@ -73,26 +74,51 @@ export class CableCalculatorService {
     const spanResults: ParabolicResult[] = [];
     let baseStation = project.startStation.stationLength;
 
-    for (const spanGeometry of spanGeometries) {
+    for (let spanIndex = 0; spanIndex < spanGeometries.length; spanIndex++) {
+      const spanGeometry = spanGeometries[spanIndex];
+
+      // Per-span sag from global H: f_i = w * L_i² / (8 * H)
+      const spanSag = (cableWeightN * spanGeometry.length * spanGeometry.length) / (8 * globalH);
+
       const spanResult = solverType === 'catenary'
-        ? calculateCatenaryCable(spanGeometry, cableWeightN, sagM)
+        ? calculateCatenaryCable(spanGeometry, cableWeightN, spanSag)
         : solverType === 'catenary-piecewise'
           ? calculatePiecewiseCatenaryCable(
             spanGeometry,
             cableWeightN,
-            sagM,
+            spanSag,
             pointLoadN,
             0.5
           )
-          : calculateParabolicCable(spanGeometry, cableWeightN, sagM);
+          : calculateParabolicCable(spanGeometry, cableWeightN, spanSag);
+
+      // Determine if this span is adjacent to a ground-level anchor
+      const isFirstSpan = spanIndex === 0;
+      const isLastSpan = spanIndex === spanGeometries.length - 1;
+      const startAnchorAtGround = isFirstSpan && (project.startStation.anchorPoint.heightAboveTerrain || 0) < 0.5;
+      const endAnchorAtGround = isLastSpan && (project.endStation.anchorPoint.heightAboveTerrain || 0) < 0.5;
+
+      // For anchor spans, skip clearance check near the ground-level anchor
+      // (cable naturally starts/ends at ground level there)
+      let pointsToCheck = spanResult.cableLine;
+      if (startAnchorAtGround || endAnchorAtGround) {
+        const skipDistance = Math.min(spanGeometry.length * 0.15, 10);
+        pointsToCheck = spanResult.cableLine.filter(p => {
+          if (startAnchorAtGround && p.stationLength < skipDistance) return false;
+          if (endAnchorAtGround && p.stationLength > spanGeometry.length - skipDistance) return false;
+          return true;
+        });
+      }
 
       // Check clearance
-      const clearanceResult = checkCableClearance(
-        spanResult.cableLine,
-        project.terrainProfile,
-        baseStation,
-        project.cableConfig.minGroundClearance
-      );
+      const clearanceResult = pointsToCheck.length > 0
+        ? checkCableClearance(
+            pointsToCheck,
+            project.terrainProfile,
+            baseStation,
+            project.cableConfig.minGroundClearance
+          )
+        : { minClearance: Infinity, minClearanceAt: 0, isViolated: false, violations: [] };
 
       // Apply clearance to result
       const resultWithClearance = applyClearanceToSpan(spanResult, clearanceResult);
@@ -258,12 +284,14 @@ export class CableCalculatorService {
       const leftSpan = spans.find(s => s.toSupport === support.id);
       const rightSpan = spans.find(s => s.fromSupport === support.id);
 
-      const hLeft = leftSpan ? Math.abs(leftSpan.horizontalForce) : 0;
-      const hRight = rightSpan ? Math.abs(rightSpan.horizontalForce) : 0;
+      const hLeft = leftSpan ? leftSpan.horizontalForce : 0;
+      const hRight = rightSpan ? rightSpan.horizontalForce : 0;
       const vLeft = leftSpan ? Math.abs(leftSpan.verticalForceEnd) : 0;
       const vRight = rightSpan ? Math.abs(rightSpan.verticalForceStart) : 0;
 
-      const horizontal = hLeft + hRight;
+      // Horizontal components oppose each other at the support.
+      const horizontal = Math.abs(hRight - hLeft);
+      // Vertical support reaction acts in one direction and accumulates.
       const vertical = vLeft + vRight;
       const resultant = Math.sqrt(horizontal * horizontal + vertical * vertical);
       const angle = Math.atan2(vertical, horizontal) * 180 / Math.PI;

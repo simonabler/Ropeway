@@ -143,6 +143,27 @@ export class LeafletMapService {
   }
 
   /**
+   * Set complete map state from persisted project values
+   */
+  setMapState(startPoint: GeoPoint | null, azimuth: number = 0): void {
+    if (!startPoint) {
+      this.clearPoints();
+      return;
+    }
+
+    this.azimuth.set(this.normalizeAzimuth(azimuth));
+    this.setStartPoint(startPoint);
+  }
+
+  /**
+   * Set azimuth and move direction handle accordingly
+   */
+  setAzimuth(azimuth: number): void {
+    this.azimuth.set(this.normalizeAzimuth(azimuth));
+    this.updateDirectionHandleFromAzimuth();
+  }
+
+  /**
    * Set direction point (handle)
    */
   private setDirectionPoint(point: GeoPoint, updateAzimuth: boolean): void {
@@ -240,6 +261,11 @@ export class LeafletMapService {
     bearing = (bearing + 360) % 360;
 
     return Math.round(bearing * 10) / 10;
+  }
+
+  private normalizeAzimuth(azimuth: number): number {
+    const normalized = azimuth % 360;
+    return normalized < 0 ? normalized + 360 : normalized;
   }
 
   /**

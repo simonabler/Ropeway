@@ -30,7 +30,7 @@ export function calculateSpanGeometries(
       stationLength: startStation.stationLength,
       height: startStation.terrainHeight + startStation.anchorPoint.heightAboveTerrain
     },
-    ...supports
+    ...[...supports]
       .sort((a, b) => a.stationLength - b.stationLength)
       .map(s => ({
         id: s.id,

@@ -19,6 +19,8 @@ import { GeoPoint } from '../../../models';
 export class MapContainer implements OnInit, OnDestroy {
   @Output() pointsChanged = new EventEmitter<{ start: GeoPoint | null; azimuth: number }>();
   @Input() profileLengthMeters = 0;
+  @Input() initialStartPoint: GeoPoint | null = null;
+  @Input() initialAzimuth = 0;
 
   // Signals from services
   readonly startPoint;
@@ -31,6 +33,7 @@ export class MapContainer implements OnInit, OnDestroy {
   // Local state
   readonly isLoading = signal(false);
   readonly showInstructions = signal(true);
+  private emitChangesEnabled = false;
 
   constructor(
     private mapService: LeafletMapService,
@@ -47,6 +50,7 @@ export class MapContainer implements OnInit, OnDestroy {
     effect(() => {
       const start = this.startPoint();
       const az = this.azimuth();
+      if (!this.emitChangesEnabled) return;
       this.pointsChanged.emit({ start, azimuth: az });
     });
   }
@@ -70,9 +74,22 @@ export class MapContainer implements OnInit, OnDestroy {
         touchZoom: true,
         dragging: true
       });
+      this.hydrateInitialMapState();
+      this.emitChangesEnabled = true;
     } catch (error) {
       console.error('Failed to initialize map:', error);
     }
+  }
+
+  private hydrateInitialMapState(): void {
+    if (this.initialStartPoint) {
+      this.mapService.setMapState(this.initialStartPoint, this.initialAzimuth);
+      this.showInstructions.set(false);
+      return;
+    }
+
+    this.mapService.clearPoints();
+    this.showInstructions.set(true);
   }
 
   /**
