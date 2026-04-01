@@ -6,14 +6,36 @@ import {
   CalculationWarning,
   CablePoint,
   AnchorForceResult,
-  SupportForceResult
+  SupportForceResult,
+  WorstCaseDesignCheck
 } from '../../models';
-import { calculateSpanGeometries } from './engine/geometry/span-geometry';
+import { calculateSpanGeometries, SpanGeometry } from './engine/geometry/span-geometry';
 import { calculateParabolicCable, ParabolicResult } from './engine/physics/parabolic-approximation';
 import { calculateCatenaryCable } from './engine/physics/catenary-approximation';
 import { calculatePiecewiseCatenaryCable } from './engine/physics/piecewise-catenary';
 import { checkCableClearance, applyClearanceToSpan } from './engine/geometry/clearance-checker';
 import { checkCableCapacity, getCapacityStatusText } from './engine/physics/cable-capacity';
+
+interface DesignSpanForces {
+  horizontalForce: number;
+  verticalForceStart: number;
+  verticalForceEnd: number;
+  maxTension: number;
+}
+
+interface DesignLoadCandidate {
+  globalPositionM: number;
+  spanIndex: number;
+  spanNumber: number;
+  loadRatio: number;
+}
+
+interface WorstCaseDesignResult {
+  spans: DesignSpanForces[];
+  maxTension: number;
+  maxHorizontalForce: number;
+  designCheck?: WorstCaseDesignCheck;
+}
 
 /**
  * Cable Calculator Service
@@ -30,17 +52,14 @@ export class CableCalculatorService {
     const warnings: CalculationWarning[] = [];
     const solverType = project.solverType ?? 'parabolic';
 
-    // Validate input
     const validationWarnings = this.validateProject(project);
     warnings.push(...validationWarnings);
 
-    // If critical errors, return invalid result
     const hasCriticalErrors = warnings.some(w => w.severity === 'error');
     if (hasCriticalErrors) {
       return this.createInvalidResult(warnings, solverType);
     }
 
-    // Calculate span geometries
     const spanGeometries = calculateSpanGeometries(
       project.supports,
       project.startStation,
@@ -55,62 +74,34 @@ export class CableCalculatorService {
       return this.createInvalidResult(warnings, solverType);
     }
 
-    // Cable weight in N/m (convert from kg/m)
     const cableWeightN = project.cableConfig.cableWeightPerMeter * 9.81;
     const pointLoadN = project.cableConfig.maxLoad * 9.81;
-
-    // Horizontal tension from config (kN → N)
-    // H is the primary parameter; sag is derived per span as f = w*L²/(8*H)
     const globalH = (project.cableConfig.horizontalTensionKN || 15) * 1000;
 
-    if (solverType === 'catenary-piecewise') {
-      warnings.push({
-        severity: 'info',
-        message: 'Stückweise Kettenlinie: Punktlast wird in Feldmitte angenommen.'
-      });
-    }
-
-    // Calculate each span
     const spanResults: ParabolicResult[] = [];
     let baseStation = project.startStation.stationLength;
 
-    for (let spanIndex = 0; spanIndex < spanGeometries.length; spanIndex++) {
-      const spanGeometry = spanGeometries[spanIndex];
+    for (const spanGeometry of spanGeometries) {
+      const spanSag = this.calculateSpanSag(cableWeightN, spanGeometry.length, globalH);
+      const spanResult = this.calculateBaselineSpan(spanGeometry, solverType, cableWeightN, spanSag);
 
-      // Per-span sag from global H: f_i = w * L_i² / (8 * H)
-      const spanSag = (cableWeightN * spanGeometry.length * spanGeometry.length) / (8 * globalH);
+      const isFirstSpan = spanGeometry.spanNumber === 1;
+      const isLastSpan = spanGeometry.spanNumber === spanGeometries.length;
+      const startAnchorAtGround =
+        isFirstSpan && (project.startStation.anchorPoint.heightAboveTerrain || 0) < 0.5;
+      const endAnchorAtGround =
+        isLastSpan && (project.endStation.anchorPoint.heightAboveTerrain || 0) < 0.5;
 
-      const spanResult = solverType === 'catenary'
-        ? calculateCatenaryCable(spanGeometry, cableWeightN, spanSag)
-        : solverType === 'catenary-piecewise'
-          ? calculatePiecewiseCatenaryCable(
-            spanGeometry,
-            cableWeightN,
-            spanSag,
-            pointLoadN,
-            0.5
-          )
-          : calculateParabolicCable(spanGeometry, cableWeightN, spanSag);
-
-      // Determine if this span is adjacent to a ground-level anchor
-      const isFirstSpan = spanIndex === 0;
-      const isLastSpan = spanIndex === spanGeometries.length - 1;
-      const startAnchorAtGround = isFirstSpan && (project.startStation.anchorPoint.heightAboveTerrain || 0) < 0.5;
-      const endAnchorAtGround = isLastSpan && (project.endStation.anchorPoint.heightAboveTerrain || 0) < 0.5;
-
-      // For anchor spans, skip clearance check near the ground-level anchor
-      // (cable naturally starts/ends at ground level there)
       let pointsToCheck = spanResult.cableLine;
       if (startAnchorAtGround || endAnchorAtGround) {
         const skipDistance = Math.min(spanGeometry.length * 0.15, 10);
-        pointsToCheck = spanResult.cableLine.filter(p => {
-          if (startAnchorAtGround && p.stationLength < skipDistance) return false;
-          if (endAnchorAtGround && p.stationLength > spanGeometry.length - skipDistance) return false;
+        pointsToCheck = spanResult.cableLine.filter(point => {
+          if (startAnchorAtGround && point.stationLength < skipDistance) return false;
+          if (endAnchorAtGround && point.stationLength > spanGeometry.length - skipDistance) return false;
           return true;
         });
       }
 
-      // Check clearance
       const clearanceResult = pointsToCheck.length > 0
         ? checkCableClearance(
             pointsToCheck,
@@ -120,12 +111,9 @@ export class CableCalculatorService {
           )
         : { minClearance: Infinity, minClearanceAt: 0, isViolated: false, violations: [] };
 
-      // Apply clearance to result
       const resultWithClearance = applyClearanceToSpan(spanResult, clearanceResult);
-
       spanResults.push(resultWithClearance);
 
-      // Add warnings for clearance violations
       if (clearanceResult.isViolated) {
         warnings.push({
           severity: 'warning',
@@ -137,45 +125,50 @@ export class CableCalculatorService {
       baseStation += spanGeometry.length;
     }
 
-    // Combine cable lines
-    const combinedCableLine: CablePoint[] = [];
-    baseStation = project.startStation.stationLength;
+    const combinedCableLine = this.combineCableLines(
+      spanResults,
+      project.startStation.stationLength
+    );
 
-    for (const result of spanResults) {
-      for (const point of result.cableLine) {
-        combinedCableLine.push({
-          stationLength: baseStation + point.stationLength,
-          height: point.height,
-          groundClearance: point.groundClearance
-        });
-      }
-      baseStation += result.cableLine[result.cableLine.length - 1].stationLength;
+    const worstCaseDesign = this.calculateWorstCaseDesign(
+      spanGeometries,
+      spanResults,
+      solverType,
+      cableWeightN,
+      pointLoadN,
+      project.startStation.stationLength
+    );
+
+    if (worstCaseDesign.designCheck) {
+      warnings.push({
+        severity: 'info',
+        message: `Bemessungsfall mit ungünstigster Punktlastposition bei ${worstCaseDesign.designCheck.governingLoadPositionM.toFixed(1)}m in Spannfeld ${worstCaseDesign.designCheck.governingSpanNumber}.`
+      });
     }
 
-    // Convert parabolic results to span results
-    const spans: SpanResult[] = spanResults.map(pr => ({
-      spanNumber: pr.spanNumber,
-      fromSupport: pr.fromSupportId,
-      toSupport: pr.toSupportId,
-      spanLength: pr.cableLine[pr.cableLine.length - 1].stationLength,
-      heightDifference: pr.cableLine[pr.cableLine.length - 1].height - pr.cableLine[0].height,
-      maxTension: pr.maxTension,
-      horizontalForce: pr.horizontalForce,
-      verticalForceStart: pr.verticalForceStart,
-      verticalForceEnd: pr.verticalForceEnd,
-      minClearance: pr.minClearance,
-      minClearanceAt: pr.minClearanceAt
+    const spans: SpanResult[] = spanResults.map((result, index) => ({
+      spanNumber: result.spanNumber,
+      fromSupport: result.fromSupportId,
+      toSupport: result.toSupportId,
+      spanLength: result.cableLine[result.cableLine.length - 1].stationLength,
+      heightDifference:
+        result.cableLine[result.cableLine.length - 1].height - result.cableLine[0].height,
+      maxTension: worstCaseDesign.spans[index].maxTension,
+      horizontalForce: worstCaseDesign.spans[index].horizontalForce,
+      verticalForceStart: worstCaseDesign.spans[index].verticalForceStart,
+      verticalForceEnd: worstCaseDesign.spans[index].verticalForceEnd,
+      minClearance: result.minClearance,
+      minClearanceAt: result.minClearanceAt
     }));
 
-    // Find maximum values
-    const maxTension = Math.max(...spans.map(s => s.maxTension));
-    const maxHorizontalForce = Math.max(...spans.map(s => s.horizontalForce));
+    const maxTension = worstCaseDesign.maxTension;
+    const maxHorizontalForce = worstCaseDesign.maxHorizontalForce;
 
-    // Check cable capacity (replaces estimated diameter)
     const customStrength = project.cableConfig.minBreakingStrengthNPerMm2
       ? project.cableConfig.minBreakingStrengthNPerMm2
       : project.cableConfig.cableBreakingStrengthKN
-        ? project.cableConfig.cableBreakingStrengthKN * 1000 / this.calculateCableArea(project.cableConfig.cableDiameterMm)
+        ? project.cableConfig.cableBreakingStrengthKN * 1000 /
+          this.calculateCableArea(project.cableConfig.cableDiameterMm)
         : undefined;
 
     const capacityCheck = checkCableCapacity(
@@ -186,10 +179,14 @@ export class CableCalculatorService {
       customStrength
     );
 
-    // Add capacity check result as warning/info
     const statusText = getCapacityStatusText(capacityCheck.status);
     warnings.push({
-      severity: capacityCheck.status === 'fail' ? 'error' : capacityCheck.status === 'warning' ? 'warning' : 'info',
+      severity:
+        capacityCheck.status === 'fail'
+          ? 'error'
+          : capacityCheck.status === 'warning'
+            ? 'warning'
+            : 'info',
       message: `${statusText} (Auslastung: ${capacityCheck.utilizationPercent.toFixed(0)}%, T_max=${maxTension.toFixed(1)}kN, zulässig=${capacityCheck.maxAllowedTensionKN.toFixed(1)}kN)`
     });
 
@@ -199,6 +196,7 @@ export class CableCalculatorService {
     return {
       timestamp: new Date(),
       method: solverType,
+      designCheck: worstCaseDesign.designCheck,
       cableLine: combinedCableLine,
       spans,
       maxTension,
@@ -211,6 +209,190 @@ export class CableCalculatorService {
     };
   }
 
+  private calculateBaselineSpan(
+    spanGeometry: SpanGeometry,
+    solverType: Project['solverType'],
+    cableWeightN: number,
+    spanSag: number
+  ): ParabolicResult {
+    if (solverType === 'parabolic') {
+      return calculateParabolicCable(spanGeometry, cableWeightN, spanSag);
+    }
+
+    return calculateCatenaryCable(spanGeometry, cableWeightN, spanSag);
+  }
+
+  private calculateWorstCaseDesign(
+    spanGeometries: SpanGeometry[],
+    baselineSpanResults: ParabolicResult[],
+    solverType: Project['solverType'],
+    cableWeightN: number,
+    pointLoadN: number,
+    startStationLength: number
+  ): WorstCaseDesignResult {
+    const unloadedSpans = baselineSpanResults.map(result => ({
+      horizontalForce: result.horizontalForce,
+      verticalForceStart: result.verticalForceStart,
+      verticalForceEnd: result.verticalForceEnd,
+      maxTension: result.maxTension
+    }));
+
+    const unloadedResult: WorstCaseDesignResult = {
+      spans: unloadedSpans,
+      maxTension: Math.max(...unloadedSpans.map(span => span.maxTension)),
+      maxHorizontalForce: Math.max(...unloadedSpans.map(span => span.horizontalForce))
+    };
+
+    if (pointLoadN <= 0) {
+      return unloadedResult;
+    }
+
+    const candidates = this.buildDesignLoadCandidates(spanGeometries, startStationLength);
+    if (candidates.length === 0) {
+      return unloadedResult;
+    }
+
+    let bestResult = unloadedResult;
+
+    for (const candidate of candidates) {
+      const spans = spanGeometries.map((spanGeometry, index) => {
+        const unloadedSpan = baselineSpanResults[index];
+        if (index !== candidate.spanIndex) {
+          return {
+            horizontalForce: unloadedSpan.horizontalForce,
+            verticalForceStart: unloadedSpan.verticalForceStart,
+            verticalForceEnd: unloadedSpan.verticalForceEnd,
+            maxTension: unloadedSpan.maxTension
+          };
+        }
+
+        return this.calculateLoadedDesignSpan(
+          spanGeometry,
+          unloadedSpan,
+          solverType,
+          cableWeightN,
+          pointLoadN,
+          candidate.loadRatio
+        );
+      });
+
+      const maxTension = Math.max(...spans.map(span => span.maxTension));
+      if (maxTension <= bestResult.maxTension) {
+        continue;
+      }
+
+      bestResult = {
+        spans,
+        maxTension,
+        maxHorizontalForce: Math.max(...spans.map(span => span.horizontalForce)),
+        designCheck: {
+          source: 'worst-case-payload',
+          governingLoadPositionM: candidate.globalPositionM,
+          governingSpanNumber: candidate.spanNumber,
+          governingSpanLoadRatio: candidate.loadRatio
+        }
+      };
+    }
+
+    return bestResult;
+  }
+
+  private buildDesignLoadCandidates(
+    spanGeometries: SpanGeometry[],
+    startStationLength: number
+  ): DesignLoadCandidate[] {
+    const sampleRatios = [0.01, 0.05, 0.1, 0.2, 0.33, 0.5, 0.67, 0.8, 0.9, 0.95, 0.99];
+    const candidates: DesignLoadCandidate[] = [];
+    let baseStation = startStationLength;
+
+    for (let spanIndex = 0; spanIndex < spanGeometries.length; spanIndex++) {
+      const spanGeometry = spanGeometries[spanIndex];
+      for (const loadRatio of sampleRatios) {
+        candidates.push({
+          globalPositionM: baseStation + spanGeometry.length * loadRatio,
+          spanIndex,
+          spanNumber: spanGeometry.spanNumber,
+          loadRatio
+        });
+      }
+      baseStation += spanGeometry.length;
+    }
+
+    return candidates;
+  }
+
+  private calculateLoadedDesignSpan(
+    spanGeometry: SpanGeometry,
+    unloadedResult: ParabolicResult,
+    solverType: Project['solverType'],
+    cableWeightN: number,
+    pointLoadN: number,
+    loadRatio: number
+  ): DesignSpanForces {
+    const clampedLoadRatio = Math.min(Math.max(loadRatio, 0.01), 0.99);
+
+    if (solverType === 'catenary-piecewise') {
+      const horizontalForceN = unloadedResult.horizontalForce * 1000;
+      const spanSag = this.calculateSpanSag(cableWeightN, spanGeometry.length, horizontalForceN);
+      const loadedResult = calculatePiecewiseCatenaryCable(
+        spanGeometry,
+        cableWeightN,
+        spanSag,
+        pointLoadN,
+        clampedLoadRatio
+      );
+
+      return {
+        horizontalForce: loadedResult.horizontalForce,
+        verticalForceStart: loadedResult.verticalForceStart,
+        verticalForceEnd: loadedResult.verticalForceEnd,
+        maxTension: loadedResult.maxTension
+      };
+    }
+
+    const horizontalForceN = unloadedResult.horizontalForce * 1000;
+    const startReactionN =
+      unloadedResult.verticalForceStart * 1000 + pointLoadN * (1 - clampedLoadRatio);
+    const endReactionN =
+      unloadedResult.verticalForceEnd * 1000 + pointLoadN * clampedLoadRatio;
+    const loadStationM = spanGeometry.length * clampedLoadRatio;
+    const leftOfLoadN = startReactionN - cableWeightN * loadStationM;
+    const rightOfLoadN = leftOfLoadN - pointLoadN;
+
+    return {
+      horizontalForce: unloadedResult.horizontalForce,
+      verticalForceStart: startReactionN / 1000,
+      verticalForceEnd: endReactionN / 1000,
+      maxTension: Math.max(
+        this.calculateTensionKN(horizontalForceN, startReactionN),
+        this.calculateTensionKN(horizontalForceN, endReactionN),
+        this.calculateTensionKN(horizontalForceN, leftOfLoadN),
+        this.calculateTensionKN(horizontalForceN, rightOfLoadN)
+      )
+    };
+  }
+
+  private combineCableLines(
+    spanResults: ParabolicResult[],
+    startStationLength: number
+  ): CablePoint[] {
+    const combinedCableLine: CablePoint[] = [];
+    let baseStation = startStationLength;
+
+    for (const result of spanResults) {
+      for (const point of result.cableLine) {
+        combinedCableLine.push({
+          stationLength: baseStation + point.stationLength,
+          height: point.height,
+          groundClearance: point.groundClearance
+        });
+      }
+      baseStation += result.cableLine[result.cableLine.length - 1].stationLength;
+    }
+
+    return combinedCableLine;
+  }
+
   /**
    * Calculate cable cross-sectional area
    */
@@ -219,10 +401,27 @@ export class CableCalculatorService {
     return Math.PI * radiusMm * radiusMm;
   }
 
+  private calculateSpanSag(
+    cableWeightN: number,
+    spanLength: number,
+    horizontalForceN: number
+  ): number {
+    return (cableWeightN * spanLength * spanLength) / (8 * horizontalForceN);
+  }
+
+  private calculateTensionKN(horizontalForceN: number, verticalForceN: number): number {
+    return Math.sqrt(
+      horizontalForceN * horizontalForceN + verticalForceN * verticalForceN
+    ) / 1000;
+  }
+
   /**
    * Create an invalid result for error cases
    */
-  private createInvalidResult(warnings: CalculationWarning[], method: Project['solverType'] = 'parabolic'): CalculationResult {
+  private createInvalidResult(
+    warnings: CalculationWarning[],
+    method: Project['solverType'] = 'parabolic'
+  ): CalculationResult {
     return {
       timestamp: new Date(),
       method: method ?? 'parabolic',
@@ -247,15 +446,17 @@ export class CableCalculatorService {
     };
   }
 
-
-
   private calculateAnchorForces(spans: SpanResult[]): AnchorForceResult[] {
     if (spans.length === 0) return [];
 
     const startSpan = spans[0];
     const endSpan = spans[spans.length - 1];
 
-    const build = (type: 'start' | 'end', horizontal: number, vertical: number): AnchorForceResult => {
+    const build = (
+      type: 'start' | 'end',
+      horizontal: number,
+      vertical: number
+    ): AnchorForceResult => {
       const h = Math.abs(horizontal);
       const v = Math.abs(vertical);
       const resultant = Math.sqrt(h * h + v * v);
@@ -275,23 +476,24 @@ export class CableCalculatorService {
     ];
   }
 
-  private calculateSupportForces(spans: SpanResult[], supports: Array<{ id: string; supportNumber: number; stationLength: number }>): SupportForceResult[] {
+  private calculateSupportForces(
+    spans: SpanResult[],
+    supports: Array<{ id: string; supportNumber: number; stationLength: number }>
+  ): SupportForceResult[] {
     if (supports.length === 0 || spans.length === 0) return [];
 
     const supportForces: SupportForceResult[] = [];
 
     for (const support of supports) {
-      const leftSpan = spans.find(s => s.toSupport === support.id);
-      const rightSpan = spans.find(s => s.fromSupport === support.id);
+      const leftSpan = spans.find(span => span.toSupport === support.id);
+      const rightSpan = spans.find(span => span.fromSupport === support.id);
 
       const hLeft = leftSpan ? leftSpan.horizontalForce : 0;
       const hRight = rightSpan ? rightSpan.horizontalForce : 0;
       const vLeft = leftSpan ? Math.abs(leftSpan.verticalForceEnd) : 0;
       const vRight = rightSpan ? Math.abs(rightSpan.verticalForceStart) : 0;
 
-      // Horizontal components oppose each other at the support.
       const horizontal = Math.abs(hRight - hLeft);
-      // Vertical support reaction acts in one direction and accumulates.
       const vertical = vLeft + vRight;
       const resultant = Math.sqrt(horizontal * horizontal + vertical * vertical);
       const angle = Math.atan2(vertical, horizontal) * 180 / Math.PI;
@@ -316,7 +518,6 @@ export class CableCalculatorService {
   private validateProject(project: Project): CalculationWarning[] {
     const warnings: CalculationWarning[] = [];
 
-    // Check terrain profile
     if (!project.terrainProfile || project.terrainProfile.segments.length === 0) {
       warnings.push({
         severity: 'error',
@@ -324,7 +525,6 @@ export class CableCalculatorService {
       });
     }
 
-    // Check if end station is properly positioned
     if (project.endStation.stationLength <= project.startStation.stationLength) {
       warnings.push({
         severity: 'error',
@@ -332,7 +532,6 @@ export class CableCalculatorService {
       });
     }
 
-    // Check cable configuration
     if (project.cableConfig.cableWeightPerMeter <= 0) {
       warnings.push({
         severity: 'error',
@@ -347,7 +546,10 @@ export class CableCalculatorService {
       });
     }
 
-    if (!project.cableConfig.minBreakingStrengthNPerMm2 || project.cableConfig.minBreakingStrengthNPerMm2 <= 0) {
+    if (
+      !project.cableConfig.minBreakingStrengthNPerMm2 ||
+      project.cableConfig.minBreakingStrengthNPerMm2 <= 0
+    ) {
       warnings.push({
         severity: 'error',
         message: 'Festigkeitsklasse muss angegeben werden.'
@@ -361,7 +563,6 @@ export class CableCalculatorService {
       });
     }
 
-    // Check span lengths
     for (const support of project.supports) {
       if (support.supportHeight <= 0) {
         warnings.push({

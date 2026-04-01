@@ -27,7 +27,7 @@
     <div class="simulation-controls">
       <div class="control-header">
         <h4>Seilsimulation</h4>
-        <span class="control-hint">Interaktive Durchhang-Analyse</span>
+        <span class="control-hint">Interaktive Simulation, getrennt vom konservativen Bemessungsnachweis</span>
       </div>
 
       <div class="controls-grid">
@@ -118,6 +118,14 @@
           }
         </div>
       </div>
+
+      @if (calculation?.designCheck; as designCheck) {
+        <div class="design-simulation-note">
+          Das Berechnungspanel verwendet die ungünstigste Punktlastposition bei
+          {{ designCheck.governingLoadPositionM.toFixed(1) }} m.
+          Die Werte in dieser Simulation sind interaktive What-if-Ergebnisse.
+        </div>
+      }
 
       <!-- Toggle Buttons -->
       <div class="toggle-buttons">

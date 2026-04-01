@@ -235,4 +235,11 @@ export class CalculationResults {
   get requiredClearance(): number {
     return this.project?.cableConfig?.minGroundClearance ?? 2;
   }
+
+  get designCheckLabel(): string | null {
+    const designCheck = this.result?.designCheck;
+    if (!designCheck) return null;
+
+    return `Ungünstigste Punktlast bei ${designCheck.governingLoadPositionM.toFixed(1)} m in Spannfeld ${designCheck.governingSpanNumber}`;
+  }
 }

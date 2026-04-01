@@ -66,7 +66,7 @@
           <!-- Key Values -->
           <div class="result-cards">
             <div class="result-card">
-              <span class="result-label">Max. Seilzug</span>
+              <span class="result-label">Bemessungs-T_max</span>
               <span class="result-value">{{ result.maxTension.toFixed(1) }}</span>
               <span class="result-unit">kN</span>
             </div>
@@ -76,6 +76,13 @@
               <span class="result-unit">kN</span>
             </div>
           </div>
+
+          @if (designCheckLabel) {
+            <div class="design-check-note">
+              <strong>Bemessungsfall:</strong> {{ designCheckLabel }}.
+              Die Seilkapazität wird gegen die ungünstigste Nutzlastposition über das gesamte Seil geprüft.
+            </div>
+          }
 
           <!-- Cable Capacity Check (NEW) -->
           @if (result.cableCapacityCheck) {

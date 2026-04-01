@@ -235,6 +235,17 @@
   }
 }
 
+.design-check-note {
+  margin-bottom: $spacing-sm;
+  padding: $spacing-xs $spacing-sm;
+  background: #e3f2fd;
+  border-left: 4px solid $info-color;
+  border-radius: $border-radius-sm;
+  color: darken($info-color, 20%);
+  font-size: $font-size-sm;
+  line-height: 1.4;
+}
+
 // Clearance Info
 .clearance-info {
   background: $gray-50;

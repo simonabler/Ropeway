@@ -70,13 +70,19 @@ export function calculatePiecewiseCatenaryCable(
   // Slopes at supports
   const slopeStart = Math.sinh((0 - x0L) / a);
   const slopeEnd = Math.sinh((length - x0R) / a);
+  const slopeLoadLeft = Math.sinh((xP - x0L) / a);
+  const slopeLoadRight = Math.sinh((xP - x0R) / a);
 
   const V_start = (H * slopeStart) / 1000;
   const V_end = (H * slopeEnd) / 1000;
+  const V_loadLeft = (H * slopeLoadLeft) / 1000;
+  const V_loadRight = (H * slopeLoadRight) / 1000;
 
   const T_start = Math.sqrt(H * H + (V_start * 1000) * (V_start * 1000)) / 1000;
   const T_end = Math.sqrt(H * H + (V_end * 1000) * (V_end * 1000)) / 1000;
-  const maxTension = Math.max(T_start, T_end);
+  const T_loadLeft = Math.sqrt(H * H + (V_loadLeft * 1000) * (V_loadLeft * 1000)) / 1000;
+  const T_loadRight = Math.sqrt(H * H + (V_loadRight * 1000) * (V_loadRight * 1000)) / 1000;
+  const maxTension = Math.max(T_start, T_end, T_loadLeft, T_loadRight);
 
   return {
     spanNumber,

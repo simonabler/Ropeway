@@ -4,6 +4,7 @@
 export interface CalculationResult {
   timestamp: Date;
   method: SolverType;
+  designCheck?: WorstCaseDesignCheck;
 
   cableLine: CablePoint[];               // Cable geometry points
   spans: SpanResult[];
@@ -20,6 +21,16 @@ export interface CalculationResult {
 
   warnings: CalculationWarning[];
   isValid: boolean;
+}
+
+/**
+ * Worst-case design metadata
+ */
+export interface WorstCaseDesignCheck {
+  source: 'worst-case-payload';
+  governingLoadPositionM: number;
+  governingSpanNumber: number;
+  governingSpanLoadRatio: number;
 }
 
 /**

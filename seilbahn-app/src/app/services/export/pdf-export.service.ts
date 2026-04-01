@@ -327,6 +327,7 @@ export class PdfExportService {
       ['Berechnungsmethode:', calc.method === 'parabolic' ? 'Parabel-Näherung' : calc.method === 'catenary-piecewise' ? 'Kettenlinie (stückweise)' : 'Kettenlinie'],
       ['Max. Seilzugkraft (Tmax):', `${calc.maxTension.toFixed(2)} kN`],
       ['Max. Horizontalkraft (H):', `${calc.maxHorizontalForce.toFixed(2)} kN`],
+      ['Designfall:', calc.designCheck ? `Worst-case Punktlast bei ${calc.designCheck.governingLoadPositionM.toFixed(1)} m (Feld ${calc.designCheck.governingSpanNumber})` : 'Standardlastfall'],
       ['Seildurchmesser:', `${calc.cableCapacityCheck.cableDiameterMm} mm`],
       ['Seilauslastung:', `${calc.cableCapacityCheck.utilizationPercent.toFixed(0)}% (${calc.cableCapacityCheck.status === 'ok' ? 'OK' : calc.cableCapacityCheck.status === 'warning' ? 'Warnung' : 'Überlastet'})`],
       ['Berechnung gültig:', calc.isValid ? 'Ja' : 'Nein'],
