@@ -31,7 +31,7 @@ Aus `seilbahn-app/`:
 
 `ProjectDetail` setzt den aktuellen Projektstand aus diesen Komponenten zusammen:
 
-1. `map-container`: Startpunkt + Azimut
+1. `map-container`: geografischer Startpunkt + Endpunkt, Azimut abgeleitet
 2. `terrain-input`: Terrain-Segmente
 3. `support-placement`: Stuetzen
 4. `cable-config`: Presets + manuelle Seilparameter
@@ -63,6 +63,7 @@ Aus `seilbahn-app/`:
 - `Project` enthaelt weiterhin `startStation` und `endStation`.
 - Im UI gibt es derzeit keine eigene Stationsmaske.
 - `endStation` wird vor der Berechnung aus dem letzten Terrain-Punkt aktualisiert.
+- Die Kartenroute speichert `startPoint` und `endPoint`; `azimuth` wird daraus synchronisiert.
 - `solverType` ist aktuell:
   - `parabolic`
   - `catenary`
@@ -81,7 +82,7 @@ Aus `seilbahn-app/`:
 
 ## Wichtige Einschraenkungen
 
-- Kein expliziter Endpunkt auf der Karte
+- Der Karten-Endpunkt ist ein geografischer Planungsmarker und nicht identisch mit der technischen `endStation`
 - Keine dedizierte UI fuer Stationsparameter
 - `presetModified$` im State-Service ist noch nicht implementiert
 - Testabdeckung ist klein

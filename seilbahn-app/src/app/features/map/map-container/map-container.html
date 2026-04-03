@@ -1,24 +1,21 @@
 <div class="map-wrapper">
-  <!-- Map Container -->
   <div id="map-container" class="map-view"></div>
 
-  <!-- Instructions Overlay -->
   @if (showInstructions()) {
     <div class="instructions-overlay" (click)="hideInstructions()">
       <div class="instructions-card">
-        <h3>Start & Richtung</h3>
+        <h3>Start & Ende</h3>
         <ol>
-          <li><strong>Tippen</strong> auf Karte = Startpunkt</li>
-          <li><strong>Pfeil ziehen</strong> = Richtung (Azimut)</li>
+          <li><strong>Tippen</strong> auf die Karte = Startpunkt</li>
+          <li><strong>Nochmal tippen</strong> = Endpunkt</li>
+          <li><strong>Marker ziehen</strong> = Route anpassen</li>
         </ol>
         <button class="btn-dismiss" (click)="hideInstructions()">Verstanden</button>
       </div>
     </div>
   }
 
-  <!-- Controls Panel -->
   <div class="controls-panel">
-    <!-- GPS Button -->
     <button
       class="control-btn gps-btn"
       (click)="locateMe()"
@@ -31,7 +28,6 @@
       }
     </button>
 
-    <!-- Use GPS as Start -->
     <button
       class="control-btn"
       (click)="useGpsAsStart()"
@@ -40,8 +36,7 @@
       🎯
     </button>
 
-    <!-- Clear -->
-    @if (startPoint()) {
+    @if (startPoint() || endPoint()) {
       <button
         class="control-btn clear-btn"
         (click)="clearPoints()"
@@ -51,9 +46,7 @@
     }
   </div>
 
-  <!-- Info Panel -->
   <div class="info-panel">
-    <!-- GPS Status -->
     @if (gpsPosition()) {
       <div class="info-item gps-status" [class.good]="isAccuracyGood()" [class.poor]="!isAccuracyGood()">
         <span class="label">GPS</span>
@@ -61,14 +54,12 @@
       </div>
     }
 
-    <!-- GPS Error -->
     @if (gpsError()) {
       <div class="info-item error">
         <span class="value">{{ gpsError() }}</span>
       </div>
     }
 
-    <!-- Start Point -->
     @if (startPoint(); as start) {
       <div class="info-item">
         <span class="label">Start</span>
@@ -76,7 +67,13 @@
       </div>
     }
 
-    <!-- Profile Length -->
+    @if (endPoint(); as end) {
+      <div class="info-item">
+        <span class="label">Ende</span>
+        <span class="value">{{ end.lat.toFixed(5) }}, {{ end.lng.toFixed(5) }}</span>
+      </div>
+    }
+
     @if (profileLengthMeters > 0) {
       <div class="info-item">
         <span class="label">Profil-Länge</span>
@@ -84,8 +81,7 @@
       </div>
     }
 
-    <!-- Azimuth -->
-    @if (startPoint()) {
+    @if (startPoint() && endPoint()) {
       <div class="info-item">
         <span class="label">Richtung</span>
         <span class="value highlight">{{ azimuth() }}&deg; {{ getAzimuthDirection() }}</span>
@@ -93,14 +89,17 @@
     }
   </div>
 
-  <!-- Help Text -->
   @if (!startPoint()) {
     <div class="help-text">
       Tippen Sie auf die Karte, um den <strong>Startpunkt</strong> zu setzen
     </div>
+  } @else if (!endPoint()) {
+    <div class="help-text">
+      Tippen Sie erneut auf die Karte, um den <strong>Endpunkt</strong> zu setzen
+    </div>
   } @else {
     <div class="help-text">
-      Ziehen Sie den <strong>Richtungs-Pfeil</strong>, um die Richtung festzulegen
+      Ziehen Sie <strong>Start- oder Endmarker</strong>, um die Route anzupassen
     </div>
   }
 </div>

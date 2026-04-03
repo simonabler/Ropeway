@@ -71,7 +71,7 @@
               <span class="result-unit">kN</span>
             </div>
             <div class="result-card">
-              <span class="result-label">Horizontalkraft</span>
+              <span class="result-label">Horizontale Vorspannung H</span>
               <span class="result-value">{{ result.maxHorizontalForce.toFixed(1) }}</span>
               <span class="result-unit">kN</span>
             </div>
@@ -81,6 +81,8 @@
             <div class="design-check-note">
               <strong>Bemessungsfall:</strong> {{ designCheckLabel }}.
               Die Seilkapazität wird gegen die ungünstigste Nutzlastposition über das gesamte Seil geprüft.
+              <br />
+              <strong>Hinweis:</strong> `H` ist die horizontale Vorspannung. Die Punktlast erhöht die resultierende Seilspannung `T_max` über die vertikale Komponente, nicht direkt `H`.
             </div>
           }
 
@@ -157,10 +159,10 @@
                 @for (a of result.anchorForces; track a.type) {
                   <div class="force-card">
                     <div class="force-title">{{ a.type === 'start' ? 'Tal-Anker' : 'Berg-Anker' }}</div>
-                    <div class="force-row"><span class="label">H:</span><span class="value">{{ a.horizontal.toFixed(1) }} kN</span></div>
-                    <div class="force-row"><span class="label">V:</span><span class="value">{{ a.vertical.toFixed(1) }} kN</span></div>
+                    <div class="force-row"><span class="label">Fx:</span><span class="value">{{ formatSignedForce(a.horizontalSigned) }} ({{ getHorizontalDirection(a.horizontalSigned) }})</span></div>
+                    <div class="force-row"><span class="label">Fy:</span><span class="value">{{ formatSignedForce(a.verticalSigned) }} ({{ getVerticalDirection(a.verticalSigned) }})</span></div>
                     <div class="force-row"><span class="label">Resultierend:</span><span class="value">{{ a.resultant.toFixed(1) }} kN</span></div>
-                    <div class="force-row"><span class="label">Winkel:</span><span class="value">{{ a.angle.toFixed(1) }}&deg;</span></div>
+                    <div class="force-row"><span class="label">Neigung:</span><span class="value">{{ a.angle.toFixed(1) }}&deg; zur Horizontalen</span></div>
                   </div>
                 }
               </div>
@@ -175,10 +177,10 @@
                 @for (s of result.supportForces; track s.supportId) {
                   <div class="force-card">
                     <div class="force-title">Stütze #{{ s.supportNumber }} ({{ s.stationLength.toFixed(1) }} m)</div>
-                    <div class="force-row"><span class="label">H:</span><span class="value">{{ s.horizontal.toFixed(1) }} kN</span></div>
-                    <div class="force-row"><span class="label">V:</span><span class="value">{{ s.vertical.toFixed(1) }} kN</span></div>
+                    <div class="force-row"><span class="label">Fx:</span><span class="value">{{ formatSignedForce(s.horizontalSigned) }} ({{ getHorizontalDirection(s.horizontalSigned) }})</span></div>
+                    <div class="force-row"><span class="label">Fy:</span><span class="value">{{ formatSignedForce(s.verticalSigned) }} ({{ getVerticalDirection(s.verticalSigned) }})</span></div>
                     <div class="force-row"><span class="label">Resultierend:</span><span class="value">{{ s.resultant.toFixed(1) }} kN</span></div>
-                    <div class="force-row"><span class="label">Winkel:</span><span class="value">{{ s.angle.toFixed(1) }}&deg;</span></div>
+                    <div class="force-row"><span class="label">Neigung:</span><span class="value">{{ s.angle.toFixed(1) }}&deg; zur Horizontalen</span></div>
                   </div>
                 }
               </div>

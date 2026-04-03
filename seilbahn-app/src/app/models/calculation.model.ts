@@ -62,10 +62,10 @@ export type SolverType = 'parabolic' | 'catenary' | 'catenary-piecewise';
  * Force Result Vector (kN)
  */
 export interface ForceVectorResult {
-  horizontal: number;                    // kN
-  vertical: number;                      // kN
+  horizontal: number;                    // horizontal magnitude in kN
+  vertical: number;                      // vertical magnitude in kN
   resultant: number;                     // kN
-  angle: number;                         // degrees
+  angle: number;                         // inclination to horizontal in degrees
 }
 
 /**
@@ -73,6 +73,8 @@ export interface ForceVectorResult {
  */
 export interface AnchorForceResult extends ForceVectorResult {
   type: 'start' | 'end';
+  horizontalSigned: number;              // Fx global, +right / -left in kN
+  verticalSigned: number;                // Fy global, +up / -down in kN
 }
 
 /**
@@ -82,6 +84,8 @@ export interface SupportForceResult extends ForceVectorResult {
   supportId: string;
   supportNumber: number;
   stationLength: number;
+  horizontalSigned: number;              // Fx global, +right / -left in kN
+  verticalSigned: number;                // Fy global, +up / -down in kN
 }
 
 /**

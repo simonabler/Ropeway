@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TerrainSegment } from '../../models';
+import { Project, TerrainSegment } from '../../models';
 import { ProjectStateService } from './project-state.service';
 
 describe('ProjectStateService', () => {
@@ -12,16 +12,23 @@ describe('ProjectStateService', () => {
     vi.useRealTimers();
   });
 
-  const createService = () => {
-    const indexedDbMock = {
-      saveProject: vi.fn().mockResolvedValue(undefined),
-      loadProject: vi.fn().mockResolvedValue(undefined)
-    };
-    return new ProjectStateService(indexedDbMock as any);
+  const createIndexedDbMock = () => ({
+    saveProject: vi.fn().mockResolvedValue(undefined),
+    loadProject: vi.fn().mockResolvedValue(undefined)
+  });
+
+  const createService = (indexedDbMock = createIndexedDbMock()) => ({
+    service: new ProjectStateService(indexedDbMock as any),
+    indexedDbMock
+  });
+
+  const flushAsync = async () => {
+    await Promise.resolve();
+    await Promise.resolve();
   };
 
   it('calculates elevation change from terrain start to terrain end', () => {
-    const service = createService();
+    const { service } = createService();
     service.createNewProject('test');
 
     const segments: TerrainSegment[] = [
@@ -49,7 +56,7 @@ describe('ProjectStateService', () => {
   });
 
   it('updates cable config immutably', () => {
-    const service = createService();
+    const { service } = createService();
     service.createNewProject('test');
 
     const before = service.currentProject!;
@@ -68,7 +75,7 @@ describe('ProjectStateService', () => {
   });
 
   it('persists end station updates in project state', () => {
-    const service = createService();
+    const { service } = createService();
     service.createNewProject('test');
 
     service.updateEndStation({
@@ -78,5 +85,132 @@ describe('ProjectStateService', () => {
 
     expect(service.currentProject?.endStation.stationLength).toBe(123);
     expect(service.currentProject?.endStation.terrainHeight).toBe(45);
+  });
+
+  it('writes start point, end point and synchronized azimuth for route geometry', async () => {
+    const { service, indexedDbMock } = createService();
+    service.createNewProject('test');
+
+    service.updateRouteGeometry(
+      { lat: 47, lng: 11 },
+      { lat: 47, lng: 11.01 }
+    );
+    await flushAsync();
+
+    expect(service.currentProject?.startPoint).toEqual({ lat: 47, lng: 11 });
+    expect(service.currentProject?.endPoint).toEqual({ lat: 47, lng: 11.01 });
+    expect(service.currentProject?.azimuth).toBeGreaterThan(80);
+    expect(service.currentProject?.azimuth).toBeLessThan(100);
+    expect(indexedDbMock.saveProject).toHaveBeenCalled();
+  });
+
+  it('backfills legacy projects without end point from start point, azimuth and terrain length', async () => {
+    const indexedDbMock = createIndexedDbMock();
+    const { service } = createService(indexedDbMock);
+
+    const legacyProject: Project = {
+      id: 'legacy',
+      name: 'legacy',
+      createdAt: new Date(),
+      modifiedAt: new Date(),
+      status: 'draft',
+      startPoint: { lat: 47, lng: 11 },
+      azimuth: 90,
+      terrainProfile: {
+        segments: [],
+        recordingMethod: 'manual',
+        totalLength: 500,
+        elevationChange: 0
+      },
+      supports: [],
+      startStation: {
+        type: 'start',
+        stationLength: 0,
+        terrainHeight: 0,
+        anchorPoint: { heightAboveTerrain: 0 },
+        groundClearance: 2
+      },
+      endStation: {
+        type: 'end',
+        stationLength: 0,
+        terrainHeight: 0,
+        anchorPoint: { heightAboveTerrain: 0 },
+        groundClearance: 2
+      },
+      cableConfig: {
+        cableType: 'carrying',
+        cableWeightPerMeter: 5,
+        maxLoad: 500,
+        safetyFactor: 5,
+        minGroundClearance: 2,
+        horizontalTensionKN: 15,
+        cableDiameterMm: 16,
+        minBreakingStrengthNPerMm2: 1960,
+        cableMaterial: 'steel'
+      },
+      endPoint: null
+    };
+
+    delete (legacyProject as Partial<Project>).endPoint;
+    indexedDbMock.loadProject.mockResolvedValue(legacyProject);
+
+    await service.loadProject('legacy');
+
+    expect(service.currentProject?.endPoint).not.toBeNull();
+    expect(service.currentProject?.azimuth).toBeGreaterThan(80);
+    expect(service.currentProject?.azimuth).toBeLessThan(100);
+    expect(indexedDbMock.saveProject).toHaveBeenCalled();
+  });
+
+  it('keeps the saved geographic end point when terrain length changes', async () => {
+    const { service } = createService();
+    service.createNewProject('test');
+
+    service.updateRouteGeometry(
+      { lat: 47, lng: 11 },
+      { lat: 47, lng: 11.01 }
+    );
+    await flushAsync();
+
+    const endPointBefore = service.currentProject?.endPoint;
+
+    service.updateTerrainSegments([
+      {
+        id: '1',
+        segmentNumber: 1,
+        lengthMeters: 50,
+        slopePercent: 0,
+        stationLength: 50,
+        terrainHeight: 0
+      },
+      {
+        id: '2',
+        segmentNumber: 2,
+        lengthMeters: 75,
+        slopePercent: 0,
+        stationLength: 125,
+        terrainHeight: 0
+      }
+    ]);
+
+    expect(service.currentProject?.endPoint).toEqual(endPointBefore);
+  });
+
+  it('clears route geometry completely', async () => {
+    const { service } = createService();
+    service.createNewProject('test');
+
+    service.updateRouteGeometry(
+      { lat: 47, lng: 11 },
+      { lat: 47, lng: 11.01 }
+    );
+    await flushAsync();
+
+    service.updateRouteGeometry(null, null);
+    await flushAsync();
+
+    expect(service.currentProject?.startPoint).toEqual({ lat: 0, lng: 0 });
+    expect(service.currentProject?.endPoint).toBeNull();
+    expect(service.currentProject?.azimuth).toBe(0);
   });
 });

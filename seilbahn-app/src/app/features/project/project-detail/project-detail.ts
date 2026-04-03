@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -10,7 +10,7 @@ import { CableConfig } from '../../cable/cable-config/cable-config';
 import { CalculationResults } from '../../calculation/calculation-results/calculation-results';
 import { ProfileChart } from '../../visualization/profile-chart/profile-chart';
 import { ExportPanel } from '../../export/export-panel/export-panel';
-import { Project, GeoPoint } from '../../../models';
+import { GeoPoint } from '../../../models';
 
 /**
  * Project Detail Component
@@ -66,28 +66,21 @@ export class ProjectDetail implements OnInit {
   /**
    * Handle map points changed
    */
-  onMapPointsChanged(event: { start: GeoPoint | null; azimuth: number }): void {
+  onMapPointsChanged(event: { start: GeoPoint | null; end: GeoPoint | null; azimuth: number }): void {
     const currentProject = this.project();
     if (!currentProject) return;
 
-    if (event.start) {
-      const samePoint =
-        currentProject.startPoint.lat === event.start.lat &&
-        currentProject.startPoint.lng === event.start.lng;
-      const sameAzimuth = currentProject.azimuth === event.azimuth;
-      if (samePoint && sameAzimuth) return;
+    const currentStart = this.mapStartPoint;
+    const currentEnd = this.mapEndPoint;
+    const sameStart = this.samePoint(currentStart, event.start);
+    const sameEnd = this.samePoint(currentEnd, event.end);
+    const sameAzimuth = currentProject.azimuth === event.azimuth;
 
-      this.projectStateService.updateStartPointAndAzimuth(event.start, event.azimuth);
+    if (sameStart && sameEnd && sameAzimuth) {
       return;
     }
 
-    const hasStartPoint =
-      currentProject.startPoint.lat !== 0 ||
-      currentProject.startPoint.lng !== 0 ||
-      currentProject.azimuth !== 0;
-    if (hasStartPoint) {
-      this.projectStateService.updateStartPointAndAzimuth({ lat: 0, lng: 0 }, 0);
-    }
+    this.projectStateService.updateRouteGeometry(event.start, event.end);
   }
 
   get mapStartPoint(): GeoPoint | null {
@@ -95,5 +88,15 @@ export class ProjectDetail implements OnInit {
     if (!point) return null;
     if (point.lat === 0 && point.lng === 0) return null;
     return point;
+  }
+
+  get mapEndPoint(): GeoPoint | null {
+    return this.project()?.endPoint ?? null;
+  }
+
+  private samePoint(a: GeoPoint | null, b: GeoPoint | null): boolean {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    return a.lat === b.lat && a.lng === b.lng;
   }
 }

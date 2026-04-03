@@ -11,6 +11,7 @@ import {
   GeoPoint
 } from '../../models';
 import { IndexedDbService } from '../storage/indexed-db.service';
+import { calculateBearing, calculateDestination, hasGeoPoint } from '../geo/route-geometry';
 
 /**
  * Project State Service
@@ -93,6 +94,7 @@ export class ProjectStateService {
       modifiedAt: new Date(),
       status: 'draft',
       startPoint: { lat: 0, lng: 0 },
+      endPoint: null,
       azimuth: 0,
       solverType: 'parabolic',
       terrainProfile: {
@@ -144,12 +146,17 @@ export class ProjectStateService {
   async loadProject(id: string): Promise<void> {
     const project = await this.indexedDbService.loadProject(id);
     if (project) {
-      this.currentProjectSubject.next(project);
-      this.terrainSegmentsSubject.next(project.terrainProfile.segments);
-      this.supportsSubject.next(project.supports);
-      this.calculationResultSubject.next(project.calculationResult || null);
-      this.selectedPresetIdSubject.next(project.cablePresetId || null);
+      const normalizedProject = this.normalizeLoadedProject(project);
+      this.currentProjectSubject.next(normalizedProject);
+      this.terrainSegmentsSubject.next(normalizedProject.terrainProfile.segments);
+      this.supportsSubject.next(normalizedProject.supports);
+      this.calculationResultSubject.next(normalizedProject.calculationResult || null);
+      this.selectedPresetIdSubject.next(normalizedProject.cablePresetId || null);
       this.isDirtySubject.next(false);
+
+      if (normalizedProject !== project) {
+        await this.indexedDbService.saveProject(normalizedProject);
+      }
     }
   }
 
@@ -327,20 +334,46 @@ export class ProjectStateService {
     }
   }
 
+  updateRouteGeometry(startPoint: GeoPoint | null, endPoint: GeoPoint | null): void {
+    const project = this.currentProjectSubject.value;
+    if (!project) return;
+
+    const normalizedStartPoint = startPoint ?? { lat: 0, lng: 0 };
+    const normalizedEndPoint =
+      hasGeoPoint(normalizedStartPoint) && hasGeoPoint(endPoint)
+        ? endPoint
+        : null;
+    const azimuth =
+      hasGeoPoint(normalizedStartPoint) && normalizedEndPoint
+        ? calculateBearing(normalizedStartPoint, normalizedEndPoint)
+        : 0;
+
+    const updatedProject: Project = {
+      ...project,
+      startPoint: normalizedStartPoint,
+      endPoint: normalizedEndPoint,
+      azimuth
+    };
+
+    this.currentProjectSubject.next(updatedProject);
+    this.isDirtySubject.next(true);
+    void this.saveProject();
+  }
+
   /**
-   * Update start point and azimuth (from map)
+   * Update start point and azimuth (legacy compatibility shim)
    */
   updateStartPointAndAzimuth(startPoint: GeoPoint, azimuth: number): void {
     const project = this.currentProjectSubject.value;
-    if (project) {
-      const updatedProject: Project = {
-        ...project,
-        startPoint,
-        azimuth
-      };
-      this.currentProjectSubject.next(updatedProject);
-      this.isDirtySubject.next(true);
-    }
+    if (!project) return;
+
+    const totalLength = project.terrainProfile.totalLength;
+    const endPoint =
+      hasGeoPoint(startPoint) && totalLength > 0
+        ? calculateDestination(startPoint, azimuth, totalLength)
+        : null;
+
+    this.updateRouteGeometry(hasGeoPoint(startPoint) ? startPoint : null, endPoint);
   }
 
   /**
@@ -348,14 +381,9 @@ export class ProjectStateService {
    */
   updateStartPoint(startPoint: GeoPoint): void {
     const project = this.currentProjectSubject.value;
-    if (project) {
-      const updatedProject: Project = {
-        ...project,
-        startPoint
-      };
-      this.currentProjectSubject.next(updatedProject);
-      this.isDirtySubject.next(true);
-    }
+    if (!project) return;
+
+    this.updateRouteGeometry(startPoint, project.endPoint);
   }
 
   /**
@@ -363,14 +391,14 @@ export class ProjectStateService {
    */
   updateAzimuth(azimuth: number): void {
     const project = this.currentProjectSubject.value;
-    if (project) {
-      const updatedProject: Project = {
-        ...project,
-        azimuth
-      };
-      this.currentProjectSubject.next(updatedProject);
-      this.isDirtySubject.next(true);
-    }
+    if (!project || !hasGeoPoint(project.startPoint)) return;
+
+    const endPoint =
+      project.terrainProfile.totalLength > 0
+        ? calculateDestination(project.startPoint, azimuth, project.terrainProfile.totalLength)
+        : null;
+
+    this.updateRouteGeometry(project.startPoint, endPoint);
   }
 
   /**
@@ -406,6 +434,39 @@ export class ProjectStateService {
     const firstHeight = segments[0].terrainHeight - (segments[0].slopePercent / 100) * segments[0].lengthMeters;
     const lastHeight = segments[segments.length - 1].terrainHeight;
     return lastHeight - firstHeight;
+  }
+
+  private normalizeLoadedProject(project: Project): Project {
+    const routeBackfilled = !('endPoint' in project) || project.endPoint === undefined;
+    const normalizedStartPoint = hasGeoPoint(project.startPoint) ? project.startPoint : { lat: 0, lng: 0 };
+    const derivedEndPoint =
+      routeBackfilled &&
+      hasGeoPoint(normalizedStartPoint) &&
+      project.terrainProfile.totalLength > 0
+        ? calculateDestination(normalizedStartPoint, project.azimuth, project.terrainProfile.totalLength)
+        : null;
+
+    const normalizedEndPoint = project.endPoint ?? derivedEndPoint ?? null;
+    const normalizedAzimuth =
+      hasGeoPoint(normalizedStartPoint) && normalizedEndPoint
+        ? calculateBearing(normalizedStartPoint, normalizedEndPoint)
+        : 0;
+
+    const normalizedProject: Project = {
+      ...project,
+      startPoint: normalizedStartPoint,
+      endPoint: normalizedEndPoint,
+      azimuth: normalizedAzimuth
+    };
+
+    const endPointChanged =
+      (project.endPoint ?? null) !== normalizedEndPoint;
+
+    if (!routeBackfilled && !endPointChanged && project.azimuth === normalizedAzimuth) {
+      return project;
+    }
+
+    return normalizedProject;
   }
 
   /**

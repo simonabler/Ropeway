@@ -6,7 +6,7 @@ Seilbahn PWA is a mobile-first Angular Progressive Web App for early-stage plann
 
 The application currently provides a single project detail workflow with these sections:
 
-1. Start point and direction on a Leaflet map
+1. Start point and end point on a Leaflet map
 2. Terrain profile capture
 3. Support placement
 4. Cable presets and manual cable configuration
@@ -14,7 +14,7 @@ The application currently provides a single project detail workflow with these s
 6. D3 profile visualization and load simulation
 7. Export to PDF, DXF, and JSON
 
-The data model still contains `startStation` and `endStation`, but there is no dedicated station editor in the UI at the moment. The map stores a start point and azimuth only. Before calculation, the app derives the end station position and terrain height from the last terrain point.
+The data model still contains `startStation` and `endStation`, but there is no dedicated station editor in the UI at the moment. The map now stores a geographic start point and geographic end point; the azimuth is synchronized from that route geometry. Before calculation, the app still derives the engineering `endStation` terrain height and station length from the last terrain point.
 
 ## Key Features
 
@@ -25,8 +25,8 @@ The data model still contains `startStation` and `endStation`, but there is no d
 
 ### Map and geo
 - Leaflet map with OpenStreetMap tiles
-- Start point selection
-- Direction handle for azimuth definition
+- Start point and end point selection
+- Azimuth derived from the stored route geometry
 - GPS locate and "use current position as start" support
 
 ### Terrain and supports
@@ -313,7 +313,7 @@ The included compose file is prepared for Traefik-based deployment.
 ## Known Gaps
 
 - No dedicated UI for editing start station and end station parameters
-- No explicit end point selection on the map
+- The geographic end point is a planning marker only; the engineering `endStation` is still derived from the terrain profile
 - `presetModified$` in the state service is still a placeholder
 - Limited automated test coverage
 - No offline map caching or advanced field sync strategy yet

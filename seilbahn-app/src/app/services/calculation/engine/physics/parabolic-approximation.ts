@@ -97,9 +97,9 @@ export function calculateParabolicCable(
   }
 
   // Calculate vertical forces at supports
-  // First derivative of parabola: dy/dx = -a*(2x - L)
-  const slopeStart = -a * (2 * 0 - length) + b;
-  const slopeEnd = -a * (2 * length - length) + b;
+  // First derivative of y = -a*x*(L-x) + b*x is dy/dx = a*(2x - L) + b
+  const slopeStart = a * (2 * 0 - length) + b;
+  const slopeEnd = a * (2 * length - length) + b;
 
   const V_start = H * slopeStart / 1000; // Convert to kN
   const V_end = H * slopeEnd / 1000;     // Convert to kN
@@ -121,6 +121,96 @@ export function calculateParabolicCable(
     sagAtLowest: Math.abs(minY),
     lowestPointStation: minYX,
     minClearance: 0, // Placeholder
+    minClearanceAt: 0
+  };
+}
+
+/**
+ * Calculate a loaded cable line using a piecewise parabolic approximation.
+ *
+ * Assumptions:
+ * - Horizontal force H is fixed
+ * - Self-weight is uniform across the whole span
+ * - Point load introduces a slope discontinuity at the load position
+ */
+export function calculateLoadedParabolicCable(
+  span: SpanGeometry,
+  cableWeightN: number,
+  horizontalForceN: number,
+  pointLoadN: number,
+  loadRatio: number = 0.5,
+  numPoints: number = 20
+): ParabolicResult {
+  const { length, heightDiff, fromHeight, toHeight, fromSupportId, toSupportId, spanNumber } = span;
+
+  numPoints = Math.max(numPoints, Math.floor(length / 5), 10);
+
+  const H = Math.max(horizontalForceN, 1);
+  const clampedLoadRatio = Math.min(Math.max(loadRatio, 0.01), 0.99);
+  const xP = clampedLoadRatio * length;
+  const quadratic = cableWeightN / (2 * H);
+
+  // Piecewise quadratic under uniform load w and a concentrated load P at xP.
+  const c2 = fromHeight;
+  const c1 = (
+    heightDiff -
+    quadratic * length * length -
+    (pointLoadN / H) * (length - xP)
+  ) / length;
+  const c3 = c1 + pointLoadN / H;
+  const c4 = fromHeight - (pointLoadN / H) * xP;
+
+  const cableLine: CablePoint[] = [];
+  let minY = Infinity;
+  let minYX = 0;
+
+  for (let i = 0; i <= numPoints; i++) {
+    const x = (i / numPoints) * length;
+    const isLeft = x <= xP;
+    const y = isLeft
+      ? quadratic * x * x + c1 * x + c2
+      : quadratic * x * x + c3 * x + c4;
+
+    cableLine.push({
+      stationLength: x,
+      height: y,
+      groundClearance: 0
+    });
+
+    if (y < minY) {
+      minY = y;
+      minYX = x;
+    }
+  }
+
+  const slopeStart = c1;
+  const slopeEnd = (2 * quadratic * length) + c3;
+  const slopeLoadLeft = (2 * quadratic * xP) + c1;
+  const slopeLoadRight = (2 * quadratic * xP) + c3;
+
+  const V_start = (H * slopeStart) / 1000;
+  const V_end = (H * slopeEnd) / 1000;
+  const V_loadLeft = (H * slopeLoadLeft) / 1000;
+  const V_loadRight = (H * slopeLoadRight) / 1000;
+
+  const T_start = Math.sqrt(H * H + (V_start * 1000) * (V_start * 1000)) / 1000;
+  const T_end = Math.sqrt(H * H + (V_end * 1000) * (V_end * 1000)) / 1000;
+  const T_loadLeft = Math.sqrt(H * H + (V_loadLeft * 1000) * (V_loadLeft * 1000)) / 1000;
+  const T_loadRight = Math.sqrt(H * H + (V_loadRight * 1000) * (V_loadRight * 1000)) / 1000;
+  const maxTension = Math.max(T_start, T_end, T_loadLeft, T_loadRight);
+
+  return {
+    spanNumber,
+    fromSupportId,
+    toSupportId,
+    cableLine,
+    horizontalForce: H / 1000,
+    verticalForceStart: V_start,
+    verticalForceEnd: V_end,
+    maxTension,
+    sagAtLowest: Math.max(fromHeight, toHeight) - minY,
+    lowestPointStation: minYX,
+    minClearance: 0,
     minClearanceAt: 0
   };
 }

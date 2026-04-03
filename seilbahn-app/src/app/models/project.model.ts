@@ -12,6 +12,11 @@ import { CalculationResult, SolverType } from './calculation.model';
 export interface Project {
   id: string;                            // UUID
   name: string;
+  projectNumber?: string;                // Optional report identifier
+  companyName?: string;                  // Optional branding for reports
+  author?: string;                       // Optional report author
+  revision?: string;                     // Optional report revision
+  approvalStatus?: 'draft' | 'for-review' | 'approved';
   createdAt: Date;
   modifiedAt: Date;
   notes?: string;
@@ -19,6 +24,7 @@ export interface Project {
 
   // Geographic base
   startPoint: GeoPoint;
+  endPoint: GeoPoint | null;
   azimuth: number;                       // Direction in degrees
 
   // Components

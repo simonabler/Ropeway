@@ -188,19 +188,19 @@
                 </div>
                 <div class="anchor-force-values">
                   <div class="force-row">
-                    <span class="force-label">Horizontal (H):</span>
-                    <span class="force-value">{{ startAnchor()!.forces.horizontal.toFixed(1) }} kN</span>
+                    <span class="force-label">Fx:</span>
+                    <span class="force-value">{{ formatSignedForce(startAnchor()!.forces.horizontalSigned) }} ({{ getHorizontalDirection(startAnchor()!.forces.horizontalSigned) }})</span>
                   </div>
                   <div class="force-row">
-                    <span class="force-label">Vertikal ({{ showLoadedCable() ? 'belastet' : 'leer' }}):</span>
-                    <span class="force-value">{{ (showLoadedCable() ? startAnchor()!.forces.verticalLoaded : startAnchor()!.forces.verticalEmpty).toFixed(1) }} kN</span>
+                    <span class="force-label">Fy ({{ showLoadedCable() ? 'belastet' : 'leer' }}):</span>
+                    <span class="force-value">{{ formatSignedForce(showLoadedCable() ? startAnchor()!.forces.verticalLoaded : startAnchor()!.forces.verticalEmpty) }} ({{ getVerticalDirection(showLoadedCable() ? startAnchor()!.forces.verticalLoaded : startAnchor()!.forces.verticalEmpty) }})</span>
                   </div>
                   <div class="force-row highlight">
                     <span class="force-label">Resultierend:</span>
                     <span class="force-value">{{ (showLoadedCable() ? startAnchor()!.forces.resultantLoaded : startAnchor()!.forces.resultantEmpty).toFixed(1) }} kN</span>
                   </div>
                   <div class="force-row">
-                    <span class="force-label">Winkel:</span>
+                    <span class="force-label">Neigung:</span>
                     <span class="force-value">{{ (showLoadedCable() ? startAnchor()!.forces.angleLoaded : startAnchor()!.forces.angleEmpty).toFixed(1) }}°</span>
                   </div>
                 </div>
@@ -214,19 +214,19 @@
                 </div>
                 <div class="anchor-force-values">
                   <div class="force-row">
-                    <span class="force-label">Horizontal (H):</span>
-                    <span class="force-value">{{ endAnchor()!.forces.horizontal.toFixed(1) }} kN</span>
+                    <span class="force-label">Fx:</span>
+                    <span class="force-value">{{ formatSignedForce(endAnchor()!.forces.horizontalSigned) }} ({{ getHorizontalDirection(endAnchor()!.forces.horizontalSigned) }})</span>
                   </div>
                   <div class="force-row">
-                    <span class="force-label">Vertikal ({{ showLoadedCable() ? 'belastet' : 'leer' }}):</span>
-                    <span class="force-value">{{ (showLoadedCable() ? endAnchor()!.forces.verticalLoaded : endAnchor()!.forces.verticalEmpty).toFixed(1) }} kN</span>
+                    <span class="force-label">Fy ({{ showLoadedCable() ? 'belastet' : 'leer' }}):</span>
+                    <span class="force-value">{{ formatSignedForce(showLoadedCable() ? endAnchor()!.forces.verticalLoaded : endAnchor()!.forces.verticalEmpty) }} ({{ getVerticalDirection(showLoadedCable() ? endAnchor()!.forces.verticalLoaded : endAnchor()!.forces.verticalEmpty) }})</span>
                   </div>
                   <div class="force-row highlight">
                     <span class="force-label">Resultierend:</span>
                     <span class="force-value">{{ (showLoadedCable() ? endAnchor()!.forces.resultantLoaded : endAnchor()!.forces.resultantEmpty).toFixed(1) }} kN</span>
                   </div>
                   <div class="force-row">
-                    <span class="force-label">Winkel:</span>
+                    <span class="force-label">Neigung:</span>
                     <span class="force-value">{{ (showLoadedCable() ? endAnchor()!.forces.angleLoaded : endAnchor()!.forces.angleEmpty).toFixed(1) }}°</span>
                   </div>
                 </div>

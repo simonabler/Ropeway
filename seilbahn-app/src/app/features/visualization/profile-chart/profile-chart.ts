@@ -27,13 +27,14 @@ interface AnchorPointData {
   terrainY: number;
   anchorY: number;
   forces: {
-    horizontal: number;      // kN
-    verticalEmpty: number;   // kN
-    verticalLoaded: number;  // kN
+    horizontal: number;      // magnitude in kN
+    horizontalSigned: number;// Fx global, +right / -left in kN
+    verticalEmpty: number;   // Fy global in kN
+    verticalLoaded: number;  // Fy global in kN
     resultantEmpty: number;  // kN
     resultantLoaded: number; // kN
-    angleEmpty: number;      // degrees
-    angleLoaded: number;     // degrees
+    angleEmpty: number;      // inclination to horizontal in degrees
+    angleLoaded: number;     // inclination to horizontal in degrees
   };
 }
 
@@ -972,8 +973,8 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     // V = w*L/2 + H*tan(alpha) where alpha is cable slope at anchor
     // For parabola: slope at x=0 is dy/dx = dh/L + 4f/L where f = w*L²/(8*H)
     const f1 = (w * L1 * L1) / (8 * H);
-    const slope_start = dh1 / L1 + 4 * f1 / L1;
-    let V_start_empty = H * slope_start; // Positive = cable pulls UP at start
+    const slope_start = dh1 / L1 - 4 * f1 / L1;
+    let V_start_empty = H * slope_start;
 
     // Check if load is in first span
     const loadInFirstSpan = globalLoadX >= firstSpanStart.x && globalLoadX <= firstSpanEnd.x;
@@ -982,7 +983,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       const a1 = globalLoadX - firstSpanStart.x;
       const b1 = L1 - a1;
       // Point load reaction at start: P * b / L
-      V_start_loaded += P * b1 / L1;
+      V_start_loaded -= P * b1 / L1;
     }
 
     // === LAST SPAN: Last support to end anchor ===
@@ -994,8 +995,8 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     // Vertical force at end anchor (pointing UP into the cable)
     // At x=L, slope is dy/dx = dh/L - 4f/L
     const fn = (w * Ln * Ln) / (8 * H);
-    const slope_end = dhn / Ln - 4 * fn / Ln;
-    let V_end_empty = -H * slope_end; // Negative slope means cable pulls UP
+    const slope_end = dhn / Ln + 4 * fn / Ln;
+    let V_end_empty = -H * slope_end;
 
     // Check if load is in last span
     const loadInLastSpan = globalLoadX >= lastSpanStart.x && globalLoadX <= lastSpanEnd.x;
@@ -1003,7 +1004,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     if (loadInLastSpan && P > 0) {
       const an = globalLoadX - lastSpanStart.x;
       // Point load reaction at end: P * a / L
-      V_end_loaded += P * an / Ln;
+      V_end_loaded -= P * an / Ln;
     }
 
     // Resultant forces (always positive - magnitude)
@@ -1019,7 +1020,8 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     const angle_end_loaded = Math.atan2(Math.abs(V_end_loaded), H) * 180 / Math.PI;
 
     // Convert to kN
-    const toKN = (n: number) => Math.abs(n) / 1000;
+    const toKN = (n: number) => n / 1000;
+    const toMagnitudeKN = (n: number) => Math.abs(n) / 1000;
 
     this.startAnchor.set({
       type: 'start',
@@ -1027,11 +1029,12 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       terrainY: this.interpolateTerrainHeight(firstSpanStart.x),
       anchorY: firstSpanStart.y,
       forces: {
-        horizontal: toKN(H),
+        horizontal: toMagnitudeKN(H),
+        horizontalSigned: toKN(H),
         verticalEmpty: toKN(V_start_empty),
         verticalLoaded: toKN(V_start_loaded),
-        resultantEmpty: toKN(T_start_empty),
-        resultantLoaded: toKN(T_start_loaded),
+        resultantEmpty: toMagnitudeKN(T_start_empty),
+        resultantLoaded: toMagnitudeKN(T_start_loaded),
         angleEmpty: angle_start_empty,
         angleLoaded: angle_start_loaded
       }
@@ -1043,11 +1046,12 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       terrainY: this.interpolateTerrainHeight(lastSpanEnd.x),
       anchorY: lastSpanEnd.y,
       forces: {
-        horizontal: toKN(H),
+        horizontal: toMagnitudeKN(H),
+        horizontalSigned: toKN(-H),
         verticalEmpty: toKN(V_end_empty),
         verticalLoaded: toKN(V_end_loaded),
-        resultantEmpty: toKN(T_end_empty),
-        resultantLoaded: toKN(T_end_loaded),
+        resultantEmpty: toMagnitudeKN(T_end_empty),
+        resultantLoaded: toMagnitudeKN(T_end_loaded),
         angleEmpty: angle_end_empty,
         angleLoaded: angle_end_loaded
       }
@@ -1168,16 +1172,15 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       const x = xScale(anchor.x);
       const y = yScale(anchor.anchorY);
 
-      const angle = showLoaded ? anchor.forces.angleLoaded : anchor.forces.angleEmpty;
       const force = showLoaded ? anchor.forces.resultantLoaded : anchor.forces.resultantEmpty;
-
-      // Direction: start anchor pulls outward (left), end anchor pulls outward (right)
-      const direction = anchor.type === 'start' ? -1 : 1;
-      const angleRad = (direction > 0 ? angle : 180 - angle) * Math.PI / 180;
+      const horizontal = anchor.forces.horizontalSigned;
+      const vertical = showLoaded ? anchor.forces.verticalLoaded : anchor.forces.verticalEmpty;
+      const scale = force > 0 ? arrowSize / force : 0;
 
       // Arrow end point
-      const endX = x + direction * arrowSize * Math.cos(angleRad * direction);
-      const endY = y - arrowSize * Math.sin(angleRad);
+      const endX = x + horizontal * scale;
+      const endY = y - vertical * scale;
+      const direction = horizontal >= 0 ? 1 : -1;
 
       // Force arrow line
       layer.append('line')
@@ -1229,6 +1232,22 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
         .attr('d', 'M0,-5L10,0L0,5')
         .attr('fill', '#F44336');
     }
+  }
+
+  formatSignedForce(forceKN: number): string {
+    return `${forceKN >= 0 ? '+' : ''}${forceKN.toFixed(1)} kN`;
+  }
+
+  getHorizontalDirection(forceKN: number): string {
+    if (forceKN > 0) return 'rechts';
+    if (forceKN < 0) return 'links';
+    return 'keine';
+  }
+
+  getVerticalDirection(forceKN: number): string {
+    if (forceKN > 0) return 'oben';
+    if (forceKN < 0) return 'unten';
+    return 'keine';
   }
 
   /**

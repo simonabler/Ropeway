@@ -201,6 +201,22 @@ export class CalculationResults {
     );
   }
 
+  formatSignedForce(forceKN: number): string {
+    return `${forceKN >= 0 ? '+' : ''}${forceKN.toFixed(1)} kN`;
+  }
+
+  getHorizontalDirection(forceKN: number): string {
+    if (forceKN > 0) return 'rechts';
+    if (forceKN < 0) return 'links';
+    return 'keine';
+  }
+
+  getVerticalDirection(forceKN: number): string {
+    if (forceKN > 0) return 'oben';
+    if (forceKN < 0) return 'unten';
+    return 'keine';
+  }
+
   private scheduleAutoCalculation(): void {
     if (this.isCalculating()) return;
     if (this.autoCalcTimer) clearTimeout(this.autoCalcTimer);

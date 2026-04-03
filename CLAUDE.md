@@ -14,7 +14,7 @@ Mobile-first Angular-PWA fuer die Vorplanung von Materialseilbahnen. Die App ist
 6. Profil-Visualisierung und Lastsimulation
 7. Export als PDF, DXF oder JSON
 
-Wichtig: Im Datenmodell existieren weiterhin `startStation` und `endStation`, aber es gibt aktuell keine eigene UI fuer Stationskonfiguration. Die `endStation` wird vor der Berechnung aus dem letzten Terrain-Punkt abgeleitet, die Karte speichert nur `startPoint` plus `azimuth`.
+Wichtig: Im Datenmodell existieren weiterhin `startStation` und `endStation`, aber es gibt aktuell keine eigene UI fuer Stationskonfiguration. Die `endStation` wird vor der Berechnung aus dem letzten Terrain-Punkt abgeleitet, die Karte speichert eine geografische Route aus `startPoint` und `endPoint`, und `azimuth` wird daraus synchronisiert.
 
 ## Aktueller Funktionsstand
 
@@ -28,7 +28,7 @@ Wichtig: Im Datenmodell existieren weiterhin `startStation` und `endStation`, ab
 - Auswahl eines Startpunkts
 - Richtungs-Handle zur Definition des Azimuts
 - GPS-Lokalisierung und Uebernahme des aktuellen Standorts als Startpunkt
-- Keine explizite Endpunkt-Auswahl mehr
+- Die Karte hat wieder einen expliziten geografischen Endpunkt; die technische `endStation` bleibt davon getrennt
 
 ### Gelaende und Stuetzen
 - Manuelle Erfassung von Terrain-Segmenten
@@ -143,7 +143,7 @@ seilbahn-app/
 ## Bekannte Luecken und technische Schulden
 
 1. Es gibt aktuell keine eigene UI fuer Start-/Endstationen, obwohl das Datenmodell diese Objekte weiterfuehrt.
-2. Die Karte modelliert nur Startpunkt und Azimut, nicht Start- und Endpunkt.
+2. Die Karte modelliert einen geografischen Start- und Endpunkt; die technische `endStation` bleibt weiterhin ein berechneter Stationsdatensatz.
 3. In `project-state.service.ts` ist `presetModified$` noch ein Platzhalter mit `TODO`.
 4. Die Testabdeckung ist gering; vorhanden sind nur wenige Specs.
 5. Der Service Worker ist eingebunden, aber Offline-Karten oder eine tiefergehende Offline-Strategie sind nicht umgesetzt.

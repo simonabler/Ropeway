@@ -1,5 +1,4 @@
 <div class="project-detail-container">
-  <!-- Header -->
   <div class="project-header">
     <button class="btn-back" (click)="goBack()">&larr; Zurück</button>
     @if (project()) {
@@ -7,14 +6,12 @@
     }
   </div>
 
-  <!-- Loading State -->
   @if (loading()) {
     <div class="loading-state">
       <p>Projekt wird geladen...</p>
     </div>
   }
 
-  <!-- Error State -->
   @if (error()) {
     <div class="error-state">
       <p>{{ error() }}</p>
@@ -22,24 +19,22 @@
     </div>
   }
 
-  <!-- Project Content -->
   @if (project() && !loading()) {
     <div class="project-content">
-      <!-- Map Section -->
       <section class="workflow-section map-section">
         <div class="section-header">
-          <h2>Startpunkt & Richtung</h2>
-          <p>Wählen Sie den Startpunkt und die Richtung (Azimut). Die Länge kommt aus dem Geländeprofil.</p>
+          <h2>Startpunkt & Endpunkt</h2>
+          <p>Wählen Sie den geografischen Start- und Endpunkt. Der Azimut wird daraus automatisch abgeleitet.</p>
         </div>
         <app-map-container
           [profileLengthMeters]="project()?.terrainProfile?.totalLength ?? 0"
           [initialStartPoint]="mapStartPoint"
+          [initialEndPoint]="mapEndPoint"
           [initialAzimuth]="project()?.azimuth ?? 0"
           (pointsChanged)="onMapPointsChanged($event)">
         </app-map-container>
       </section>
 
-      <!-- Terrain Input Section -->
       <section class="workflow-section">
         <div class="section-header">
           <h2>Geländeprofil erfassen</h2>
@@ -48,7 +43,6 @@
         <app-terrain-input></app-terrain-input>
       </section>
 
-      <!-- Support Placement Section -->
       <section class="workflow-section">
         <div class="section-header">
           <h2>Stützen platzieren</h2>
@@ -57,7 +51,6 @@
         <app-support-placement></app-support-placement>
       </section>
 
-      <!-- Cable Configuration Section -->
       <section class="workflow-section">
         <div class="section-header">
           <h2>Seilparameter</h2>
@@ -66,7 +59,6 @@
         <app-cable-config></app-cable-config>
       </section>
 
-      <!-- Calculation Section -->
       <section class="workflow-section">
         <div class="section-header">
           <h2>Berechnung</h2>
@@ -75,7 +67,6 @@
         <app-calculation-results></app-calculation-results>
       </section>
 
-      <!-- Profile Visualization Section -->
       <section class="workflow-section visualization-section">
         <div class="section-header">
           <h2>Profil-Visualisierung</h2>
@@ -84,7 +75,6 @@
         <app-profile-chart></app-profile-chart>
       </section>
 
-      <!-- Export Section -->
       <section class="workflow-section">
         <div class="section-header">
           <h2>Export</h2>
