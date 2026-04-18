@@ -20,6 +20,7 @@ import { calculatePiecewiseCatenaryCable } from './engine/physics/piecewise-cate
 import { checkCableClearance, applyClearanceToSpan } from './engine/geometry/clearance-checker';
 import { checkCableCapacity, getCapacityStatusText } from './engine/physics/cable-capacity';
 import { GlobalEngineeringCalculatorService } from './engineering/global-engineering-calculator.service';
+import { isStationInsideActiveMonitoredRange } from '../operations/operational-envelope';
 
 type DesignSpanResult = ParabolicResult;
 
@@ -131,10 +132,17 @@ export class CableCalculatorService {
 
     for (const result of activeDesignCase.spans) {
       if (result.minClearance < project.cableConfig.minGroundClearance) {
+        const insideActiveRange = isStationInsideActiveMonitoredRange(
+          project.operationalEnvelope,
+          result.minClearanceAt
+        );
         warnings.push({
-          severity: 'warning',
-          message: `Spannfeld ${result.spanNumber}: Bodenfreiheit unterschritten (min: ${result.minClearance.toFixed(2)}m bei Station ${result.minClearanceAt.toFixed(1)}m)`,
-          relatedElement: `span-${result.spanNumber}`
+          severity: insideActiveRange ? 'warning' : 'info',
+          message: insideActiveRange
+            ? `Spannfeld ${result.spanNumber}: Bodenfreiheit im aktiv ueberwachten Bereich unterschritten (min: ${result.minClearance.toFixed(2)}m bei Station ${result.minClearanceAt.toFixed(1)}m)`
+            : `Spannfeld ${result.spanNumber}: Bodenfreiheit ausserhalb des aktiv ueberwachten Bereichs unterschritten (min: ${result.minClearance.toFixed(2)}m bei Station ${result.minClearanceAt.toFixed(1)}m)`,
+          relatedElement: `span-${result.spanNumber}`,
+          operationalRangeContext: insideActiveRange ? 'inside-active-range' : 'outside-active-range'
         });
       }
     }
@@ -605,7 +613,7 @@ export class CableCalculatorService {
       ) {
         warnings.push({
           severity: 'error',
-          message: 'E-Modul muss im Engineering-Modus größer als 0 sein.'
+          message: 'E-Modul muss im Ingenieurmodus groesser als 0 sein.'
         });
       }
 
@@ -616,7 +624,7 @@ export class CableCalculatorService {
       ) {
         warnings.push({
           severity: 'error',
-          message: 'Füllfaktor muss im Engineering-Modus zwischen 0 und 1 liegen.'
+          message: 'Fuellfaktor muss im Ingenieurmodus zwischen 0 und 1 liegen.'
         });
       }
     }

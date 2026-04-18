@@ -1,8 +1,9 @@
 [
   {
     "id": "preset-light-forest",
-    "name": "Leichtes Forstseil – 12mm",
-    "description": "Für leichte Holztransporte im Forstbetrieb, kurze bis mittlere Spannweiten",
+    "name": "Leichtes Forstseil - 12mm",
+    "description": "Fuer leichte Holztransporte im Forstbetrieb, kurze bis mittlere Spannweiten",
+    "version": 1,
     "cable": {
       "diameterMm": 12,
       "breakingStrengthKN": 79,
@@ -27,8 +28,9 @@
   },
   {
     "id": "preset-standard-material",
-    "name": "Standard Materialseilbahn – 16mm",
-    "description": "Standardkonfiguration für allgemeine Materialtransporte, mittlere Lasten und Spannweiten",
+    "name": "Standard Materialseilbahn - 16mm",
+    "description": "Standardkonfiguration fuer allgemeine Materialtransporte, mittlere Lasten und Spannweiten",
+    "version": 1,
     "cable": {
       "diameterMm": 16,
       "breakingStrengthKN": 141,
@@ -53,8 +55,9 @@
   },
   {
     "id": "preset-heavy-construction",
-    "name": "Schwere Last – 20mm",
-    "description": "Für Baustellentransporte und schwere Lasten, große Spannweiten, verstärktes Tragseil",
+    "name": "Schwere Last - 20mm",
+    "description": "Fuer Baustellentransporte und schwere Lasten, grosse Spannweiten, verstaerktes Tragseil",
+    "version": 1,
     "cable": {
       "diameterMm": 20,
       "breakingStrengthKN": 220,
@@ -79,8 +82,9 @@
   },
   {
     "id": "preset-test-conservative",
-    "name": "Test/Simulation – 16mm konservativ",
-    "description": "Konservative Werte für Testzwecke und Vorabschätzungen, erhöhter Sicherheitsfaktor",
+    "name": "Test/Simulation - 16mm konservativ",
+    "description": "Konservative Werte fuer Testzwecke und Vorabschaetzungen, erhoehter Sicherheitsfaktor",
+    "version": 1,
     "cable": {
       "diameterMm": 16,
       "breakingStrengthKN": 141,

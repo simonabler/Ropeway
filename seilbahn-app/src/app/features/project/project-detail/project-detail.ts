@@ -10,6 +10,8 @@ import { CableConfig } from '../../cable/cable-config/cable-config';
 import { CalculationResults } from '../../calculation/calculation-results/calculation-results';
 import { ProfileChart } from '../../visualization/profile-chart/profile-chart';
 import { ExportPanel } from '../../export/export-panel/export-panel';
+import { StationEditor } from '../../station/station-editor/station-editor';
+import { OperationalEnvelopeEditor } from '../../operations/operational-envelope-editor/operational-envelope-editor';
 import { GeoPoint } from '../../../models';
 
 /**
@@ -18,7 +20,7 @@ import { GeoPoint } from '../../../models';
  */
 @Component({
   selector: 'app-project-detail',
-  imports: [CommonModule, MapContainer, TerrainInput, SupportPlacement, CableConfig, CalculationResults, ProfileChart, ExportPanel],
+  imports: [CommonModule, MapContainer, TerrainInput, SupportPlacement, CableConfig, CalculationResults, ProfileChart, ExportPanel, StationEditor, OperationalEnvelopeEditor],
   templateUrl: './project-detail.html',
   styleUrl: './project-detail.scss',
   standalone: true

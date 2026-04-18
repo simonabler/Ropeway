@@ -75,6 +75,10 @@ describe('CableCalculatorService', () => {
       anchorPoint: { heightAboveTerrain: 8 },
       groundClearance: 2
     },
+    operationalEnvelope: {
+      activeMonitoredRangeStartStation: 0,
+      activeMonitoredRangeEndStation: 100
+    },
     cableConfig: {
       cableType: 'carrying',
       cableWeightPerMeter: 5,
@@ -448,5 +452,26 @@ describe('CableCalculatorService', () => {
     expect(worstCaseResult.engineeringMetrics?.designMode).toBe('worst-case');
     expect(worstCaseResult.engineeringMetrics?.envelope?.sampledLoadCases).toBeGreaterThan(1);
     expect(worstCaseResult.maxTension).toBeGreaterThanOrEqual(selectedResult.maxTension);
+  });
+
+  it('classifies clearance warnings outside the active monitored range as info', () => {
+    const project = createProject('parabolic', {
+      maxLoad: 3000,
+      minGroundClearance: 9
+    });
+    project.operationalEnvelope = {
+      activeMonitoredRangeStartStation: 99,
+      activeMonitoredRangeEndStation: 100
+    };
+
+    const result = service.calculateCable(project);
+    const clearanceMessages = result.warnings.filter((warning) =>
+      warning.message.includes('Bodenfreiheit')
+    );
+
+    expect(clearanceMessages.length).toBeGreaterThan(0);
+    expect(clearanceMessages.some((warning) => warning.operationalRangeContext === 'outside-active-range')).toBe(true);
+    expect(clearanceMessages.some((warning) => warning.severity === 'info')).toBe(true);
+    expect(clearanceMessages.some((warning) => warning.operationalRangeContext === 'inside-active-range')).toBe(false);
   });
 });

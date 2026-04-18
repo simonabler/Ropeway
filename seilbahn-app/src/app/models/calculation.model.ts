@@ -164,4 +164,5 @@ export interface CalculationWarning {
   severity: 'error' | 'warning' | 'info';
   message: string;
   relatedElement?: string;               // Support ID, span number, etc.
+  operationalRangeContext?: 'inside-active-range' | 'outside-active-range';
 }

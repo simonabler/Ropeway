@@ -512,6 +512,16 @@
     transition: fill-opacity 0.2s;
   }
 
+  .operational-range-band {
+    fill: rgba(46, 125, 50, 0.08);
+  }
+
+  .operational-range-boundary {
+    stroke: #2E7D32;
+    stroke-width: 1.5;
+    stroke-dasharray: 6 4;
+  }
+
   .terrain-line {
     stroke-linejoin: round;
   }
@@ -642,6 +652,12 @@
   width: 20px;
   height: 4px;
   border-radius: 2px;
+
+  &.active-range {
+    background: rgba(46, 125, 50, 0.45);
+    border: 1px solid #2E7D32;
+    height: 8px;
+  }
 
   &.terrain {
     background: #5D4037;

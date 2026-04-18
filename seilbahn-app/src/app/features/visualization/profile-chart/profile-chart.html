@@ -1,12 +1,11 @@
 <div class="profile-chart-container">
-  <!-- Header with controls -->
   <div class="chart-header">
-    <h3>Profil-Ansicht</h3>
+    <h3>Profilansicht</h3>
     <div class="chart-controls">
       @if (isZoomed()) {
-        <button class="btn-reset-zoom" (click)="resetZoom()" title="Zoom zurücksetzen">
+        <button class="btn-reset-zoom" (click)="resetZoom()" title="Zoom zuruecksetzen">
           <span class="icon">&#x21BA;</span>
-          <span class="label">Reset</span>
+          <span class="label">Zuruecksetzen</span>
         </button>
       }
       <button class="btn-fullscreen" (click)="toggleFullscreen()" [title]="isFullscreen() ? 'Vollbild beenden' : 'Vollbild'">
@@ -21,21 +20,24 @@
     </div>
   </div>
 
-  <!-- Chart Container -->
   @if (hasData()) {
-    <!-- Simulation Controls -->
     <div class="simulation-controls">
       <div class="control-header">
         <h4>Seilsimulation</h4>
-        <span class="control-hint">Die Regler steuern den aktiven Berechnungslastfall für Diagramm und Nachweis.</span>
+        <span class="control-hint">Die Regler steuern den aktiven Berechnungslastfall fuer Diagramm und Nachweis.</span>
         <button class="btn-reset-zoom" type="button" (click)="resetCalculationControls()">
           <span class="icon">&#x21BA;</span>
           <span class="label">Werte zurücksetzen</span>
         </button>
       </div>
 
+      <div class="design-simulation-note">
+        <strong>Aktiv ueberwachter Bereich:</strong> {{ activeMonitoredRangeText }}.
+        <br />
+        <strong>Randstuetzen:</strong> {{ edgeSupportTraversabilityText }}
+      </div>
+
       <div class="controls-grid">
-        <!-- Horizontal Tension -->
         <div class="control-group">
           <label class="control-label">
             <span class="label-text">Seilzug (H)</span>
@@ -55,7 +57,6 @@
           </div>
         </div>
 
-        <!-- Point Load -->
         <div class="control-group">
           <label class="control-label">
             <span class="label-text">Punktlast (P)</span>
@@ -76,7 +77,6 @@
           </div>
         </div>
 
-        <!-- Load Position -->
         <div class="control-group">
           <label class="control-label">
             <span class="label-text">Lastposition</span>
@@ -97,7 +97,6 @@
         </div>
       </div>
 
-      <!-- Live Capacity Check -->
       <div class="live-capacity"
            [class.ok]="liveCapacityStatus() === 'ok'"
            [class.warning]="liveCapacityStatus() === 'warning'"
@@ -126,70 +125,51 @@
       @if (calculation?.designCheck; as designCheck) {
         <div class="design-simulation-note">
           @if (calculation?.calculationMode === 'engineering' && calculation?.engineeringMetrics?.designMode === 'worst-case') {
-            Engineering-Worst-Case bei {{ designCheck.governingLoadPositionM.toFixed(1) }} m.
+            Ingenieur-Worst-Case bei {{ designCheck.governingLoadPositionM.toFixed(1) }} m.
           } @else {
             Aktiver Lastfall bei {{ designCheck.governingLoadPositionM.toFixed(1) }} m.
           }
           @if (calculation?.activeLoadCase?.hasOverrides) {
-            Diese Berechnung verwendet temporäre Slider-Werte.
+            Diese Berechnung verwendet temporäre Reglerwerte.
           } @else {
             Diese Berechnung verwendet die gespeicherten Projektparameter.
           }
           @if (calculation?.calculationMode === 'engineering') {
-            Die Profilansicht nutzt im Engineering-Modus die Solver-Geometrie.
+            Die Profilansicht nutzt im Ingenieurmodus die Solver-Geometrie.
           }
         </div>
       }
 
-      <!-- Toggle Buttons -->
       <div class="toggle-buttons">
-        <button
-          class="toggle-btn"
-          [class.active]="showEmptyCable()"
-          (click)="toggleEmptyCable()"
-        >
+        <button class="toggle-btn" [class.active]="showEmptyCable()" (click)="toggleEmptyCable()">
           <span class="toggle-color empty"></span>
           <span>Leerseil</span>
         </button>
-        <button
-          class="toggle-btn"
-          [class.active]="showLoadedCable()"
-          (click)="toggleLoadedCable()"
-        >
+        <button class="toggle-btn" [class.active]="showLoadedCable()" (click)="toggleLoadedCable()">
           <span class="toggle-color loaded"></span>
           <span>Belastet</span>
         </button>
-        <button
-          class="toggle-btn"
-          [class.active]="showCriticalPoint()"
-          (click)="toggleCriticalPoint()"
-        >
+        <button class="toggle-btn" [class.active]="showCriticalPoint()" (click)="toggleCriticalPoint()">
           <span class="toggle-color critical"></span>
-          <span>Kritisch</span>
+          <span>Kritischer Punkt</span>
         </button>
-        <button
-          class="toggle-btn"
-          [class.active]="showAnchorForces()"
-          (click)="toggleAnchorForces()"
-        >
+        <button class="toggle-btn" [class.active]="showAnchorForces()" (click)="toggleAnchorForces()">
           <span class="toggle-color anchor"></span>
           <span>Ankerkräfte</span>
         </button>
       </div>
 
-      <!-- Critical Info -->
       @if (criticalPoint() && showCriticalPoint()) {
         <div class="critical-info" [class.warning]="criticalPoint()!.clearance < minClearanceThreshold">
           <span class="critical-icon">⚠</span>
           <div class="critical-details">
-            <span class="critical-label">Min. Bodenfreiheit:</span>
+            <span class="critical-label">Minimale Bodenfreiheit:</span>
             <span class="critical-value">{{ criticalPoint()!.clearance.toFixed(2) }} m</span>
             <span class="critical-location">bei Station {{ criticalPoint()!.x.toFixed(1) }} m</span>
           </div>
         </div>
       }
 
-      <!-- Anchor Forces Info -->
       @if (showAnchorForces() && (startAnchor() || endAnchor())) {
         <div class="anchor-forces-container">
           <h5 class="anchor-forces-title">⚓ Ankerkräfte</h5>
@@ -215,7 +195,7 @@
                   </div>
                   <div class="force-row">
                     <span class="force-label">Neigung:</span>
-                    <span class="force-value">{{ (showLoadedCable() ? startAnchor()!.forces.angleLoaded : startAnchor()!.forces.angleEmpty).toFixed(1) }}°</span>
+                    <span class="force-value">{{ (showLoadedCable() ? startAnchor()!.forces.angleLoaded : startAnchor()!.forces.angleEmpty).toFixed(1) }}&deg;</span>
                   </div>
                 </div>
               </div>
@@ -241,7 +221,7 @@
                   </div>
                   <div class="force-row">
                     <span class="force-label">Neigung:</span>
-                    <span class="force-value">{{ (showLoadedCable() ? endAnchor()!.forces.angleLoaded : endAnchor()!.forces.angleEmpty).toFixed(1) }}°</span>
+                    <span class="force-value">{{ (showLoadedCable() ? endAnchor()!.forces.angleLoaded : endAnchor()!.forces.angleEmpty).toFixed(1) }}&deg;</span>
                   </div>
                 </div>
               </div>
@@ -251,12 +231,13 @@
       }
     </div>
 
-    <div #chartContainer class="chart-wrapper" id="profile-chart-export">
-      <!-- D3 SVG will be inserted here -->
-    </div>
+    <div #chartContainer class="chart-wrapper" id="profile-chart-export"></div>
 
-    <!-- Legend -->
     <div class="chart-legend">
+      <div class="legend-item">
+        <span class="legend-color active-range"></span>
+        <span class="legend-label">Aktiv ueberwachter Bereich</span>
+      </div>
       <div class="legend-item">
         <span class="legend-color terrain"></span>
         <span class="legend-label">Gelände</span>
@@ -267,7 +248,7 @@
           @if (calculation?.calculationMode === 'engineering' && calculation?.engineeringMetrics?.envelope) {
             Worst-Case-Huellkurve
           } @else {
-            Maximale Punktlast (Hüllkurve)
+            Maximale Punktlast Hüllkurve
           }
         </span>
       </div>
@@ -299,7 +280,7 @@
       </div>
       <div class="legend-item">
         <span class="legend-color clearance"></span>
-        <span class="legend-label">Min. Freiraum</span>
+        <span class="legend-label">Mindestfreiraum</span>
       </div>
       @if (showCriticalPoint() && criticalPoint()) {
         <div class="legend-item">
@@ -309,16 +290,14 @@
       }
     </div>
 
-    <!-- Touch hint -->
     <div class="touch-hint">
-      <span>Pinch zum Zoomen • Wischen zum Verschieben</span>
+      <span>Pinch zum Zoomen - Wischen zum Verschieben</span>
     </div>
   } @else {
-    <!-- Empty State -->
     <div class="empty-state">
       <div class="empty-icon">📊</div>
       <h4>Keine Daten vorhanden</h4>
-      <p>Erfassen Sie zuerst das Geländeprofil und platzieren Sie mindestens 2 Stützen</p>
+      <p>Erfassen Sie zuerst das Geländeprofil und platzieren Sie mindestens zwei Stuetzen.</p>
     </div>
   }
 </div>

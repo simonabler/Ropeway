@@ -16,6 +16,7 @@ import { calculateSpanGeometries, SpanGeometry } from '../engine/geometry/span-g
 import { applyClearanceToSpan, checkCableClearance } from '../engine/geometry/clearance-checker';
 import { checkCableCapacity, getCapacityStatusText } from '../engine/physics/cable-capacity';
 import { ParabolicResult } from '../engine/physics/parabolic-approximation';
+import { isStationInsideActiveMonitoredRange } from '../../operations/operational-envelope';
 
 interface DesignLoadCandidate {
   globalPositionM: number;
@@ -126,14 +127,14 @@ export class GlobalEngineeringCalculatorService {
         severity: 'info',
         message:
           activeState.designCheck.source === 'worst-case-payload'
-            ? `Engineering-Modus: Worst-Case-Punktlast bei ${activeState.designCheck.governingLoadPositionM.toFixed(1)}m in Spannfeld ${activeState.designCheck.governingSpanNumber}.`
-            : `Engineering-Modus: global elastischer Lastfall bei ${activeState.designCheck.governingLoadPositionM.toFixed(1)}m in Spannfeld ${activeState.designCheck.governingSpanNumber}.`
+            ? `Ingenieurmodus: Worst-Case-Punktlast bei ${activeState.designCheck.governingLoadPositionM.toFixed(1)}m in Spannfeld ${activeState.designCheck.governingSpanNumber}.`
+            : `Ingenieurmodus: global elastischer Lastfall bei ${activeState.designCheck.governingLoadPositionM.toFixed(1)}m in Spannfeld ${activeState.designCheck.governingSpanNumber}.`
       });
     }
 
     warnings.push({
       severity: 'info',
-      message: `Engineering-Modus V1 ohne Sattelreibung sowie ohne Mast- und Ankernachgiebigkeit. Horizontalkraft gelöst zu ${(
+      message: `Ingenieurmodus V1 ohne Sattelreibung sowie ohne Mast- und Ankernachgiebigkeit. Horizontalkraft geloest zu ${(
         activeState.horizontalForceN / 1000
       ).toFixed(1)}kN.`
     });
@@ -147,10 +148,17 @@ export class GlobalEngineeringCalculatorService {
 
     for (const result of activeState.spans) {
       if (result.minClearance < project.cableConfig.minGroundClearance) {
+        const insideActiveRange = isStationInsideActiveMonitoredRange(
+          project.operationalEnvelope,
+          result.minClearanceAt
+        );
         warnings.push({
-          severity: 'warning',
-          message: `Spannfeld ${result.spanNumber}: Bodenfreiheit unterschritten (min: ${result.minClearance.toFixed(2)}m bei Station ${result.minClearanceAt.toFixed(1)}m)`,
-          relatedElement: `span-${result.spanNumber}`
+          severity: insideActiveRange ? 'warning' : 'info',
+          message: insideActiveRange
+            ? `Spannfeld ${result.spanNumber}: Bodenfreiheit im aktiv ueberwachten Bereich unterschritten (min: ${result.minClearance.toFixed(2)}m bei Station ${result.minClearanceAt.toFixed(1)}m)`
+            : `Spannfeld ${result.spanNumber}: Bodenfreiheit ausserhalb des aktiv ueberwachten Bereichs unterschritten (min: ${result.minClearance.toFixed(2)}m bei Station ${result.minClearanceAt.toFixed(1)}m)`,
+          relatedElement: `span-${result.spanNumber}`,
+          operationalRangeContext: insideActiveRange ? 'inside-active-range' : 'outside-active-range'
         });
       }
     }

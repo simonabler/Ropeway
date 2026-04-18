@@ -1,44 +1,90 @@
 <div class="cable-config-container">
-  <!-- Preset Selection -->
   <div class="preset-section">
     <h3>Seil-Preset wählen</h3>
     <div class="preset-grid">
       @for (preset of presets(); track preset.id) {
-        <button
+        <div
           class="preset-card"
           [class.selected]="selectedPresetId() === preset.id"
           [class.system]="preset.isSystemPreset"
-          (click)="applyPreset(preset.id)"
         >
-          <span class="preset-name">{{ preset.name }}</span>
-          @if (preset.description) {
-            <span class="preset-desc">{{ preset.description }}</span>
-          }
-          <div class="preset-values">
-            <span class="preset-diameter">{{ preset.cable.diameterMm }}mm</span>
-            <span>{{ preset.carrier.wNPerM }} N/m</span>
-            <span>{{ preset.load.PN / 1000 }} kN</span>
-          </div>
+          <button
+            type="button"
+            class="preset-select"
+            (click)="applyPreset(preset.id)"
+          >
+            <span class="preset-name">{{ preset.name }}</span>
+            @if (preset.description) {
+              <span class="preset-desc">{{ preset.description }}</span>
+            }
+            <div class="preset-values">
+              <span class="preset-diameter">{{ preset.cable.diameterMm }} mm</span>
+              <span>{{ preset.carrier.wNPerM.toFixed(1) }} N/m</span>
+              <span>{{ (preset.load.PN / 1000).toFixed(1) }} kN</span>
+            </div>
+          </button>
+
           @if (preset.isSystemPreset) {
             <span class="system-badge">System</span>
           } @else {
-            <button class="btn-delete-preset" (click)="deletePreset(preset.id); $event.stopPropagation()" title="Löschen">×</button>
+            <button
+              type="button"
+              class="btn-delete-preset"
+              (click)="deletePreset(preset.id)"
+              title="Preset loeschen"
+            >
+              x
+            </button>
           }
-        </button>
+        </div>
       }
     </div>
 
     @if (presets().length === 0) {
-      <p class="no-presets">Keine Presets verfügbar</p>
+      <p class="no-presets">Keine Presets verfügbar.</p>
     }
   </div>
 
-  <!-- Modification Warning -->
+  <div class="current-config">
+    <div class="config-header">
+      <h3>Preset-Status</h3>
+      <span class="preset-tag">{{ getSelectedPresetName() }}</span>
+    </div>
+
+    <div class="config-summary">
+      <div class="summary-row">
+        <span class="label">Herkunft:</span>
+        <span class="value">{{ presetOriginLabel }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Version:</span>
+        <span class="value">{{ presetVersionLabel }}</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Status:</span>
+        <span class="value">{{ isModified() ? 'Modifiziert' : 'Unveraendert' }}</span>
+      </div>
+    </div>
+
+    @if (hasMissingPresetReference) {
+      <div class="modification-warning">
+        <div class="warning-header">
+          <span class="warning-icon">!</span>
+          <span>Die gespeicherte Preset-Referenz ist nicht mehr vorhanden.</span>
+        </div>
+        <p class="hint">Die aktuellen Seilwerte bleiben erhalten. Sie koennen die defekte Referenz entfernen oder ein neues Preset speichern.</p>
+        <button type="button" class="btn-reset" (click)="clearMissingPresetReference()">
+          Fehlende Referenz entfernen
+        </button>
+      </div>
+    }
+  </div>
+
   @if (isModified()) {
     <div class="modification-warning">
       <div class="warning-header">
         <span class="warning-icon">⚠</span>
-        <span>Werte vom Preset abweichend</span>
+        <span>Die aktuellen Werte weichen vom ausgewaehlten Preset ab.</span>
       </div>
       <div class="modification-list">
         @for (mod of modifications(); track mod.field) {
@@ -50,11 +96,10 @@
           </div>
         }
       </div>
-      <button class="btn-reset" (click)="resetToPreset()">Auf Preset zurücksetzen</button>
+      <button type="button" class="btn-reset" (click)="resetToPreset()">Auf Preset zurücksetzen</button>
     </div>
   }
 
-  <!-- Current Config Display -->
   @if (selectedPresetId() && !isManualMode()) {
     <div class="current-config">
       <div class="config-header">
@@ -65,7 +110,7 @@
       <div class="config-summary">
         <div class="summary-row highlight">
           <span class="label">Seildurchmesser:</span>
-          <span class="value">{{ cableDiameterMm }} mm ({{ cableMaterial === 'steel' ? 'Stahl' : 'Kunststoff' }})</span>
+          <span class="value">{{ cableDiameterMm }} mm ({{ cableMaterial === 'steel' ? 'Stahl' : 'Synthetik' }})</span>
         </div>
         <div class="summary-row">
           <span class="label">Festigkeitsklasse:</span>
@@ -76,7 +121,7 @@
           <span class="value">{{ cableWeightNPerM.toFixed(1) }} N/m</span>
         </div>
         <div class="summary-row">
-          <span class="label">Seilzug (H):</span>
+          <span class="label">Horizontale Vorspannung H:</span>
           <span class="value">{{ horizontalTensionKN.toFixed(1) }} kN</span>
         </div>
         <div class="summary-row">
@@ -88,23 +133,21 @@
           <span class="value">{{ (loadN / 1000).toFixed(1) }} kN</span>
         </div>
         <div class="summary-row">
-          <span class="label">Min. Bodenfreiheit:</span>
+          <span class="label">Mindestfreiraum:</span>
           <span class="value">{{ minClearanceM.toFixed(1) }} m</span>
         </div>
       </div>
 
-      <button class="btn-secondary btn-full" (click)="enableManualMode()">
-        Werte manuell anpassen
+      <button type="button" class="btn-secondary btn-full" (click)="enableManualMode()">
+        Zur manuellen Eingabe wechseln
       </button>
     </div>
   }
 
-  <!-- Manual Input Mode -->
   @if (isManualMode() || !selectedPresetId()) {
     <div class="manual-input-section">
       <h3>Seilparameter</h3>
 
-      <!-- Cable Diameter (NEW) -->
       <div class="input-group diameter-group">
         <label>Seildurchmesser [mm]</label>
         <div class="diameter-selector">
@@ -115,12 +158,12 @@
           >
             @for (cable of standardCables; track cable.diameterMm) {
               <option [value]="cable.diameterMm">
-                {{ cable.diameterMm }}mm - {{ cable.description }}
+                {{ cable.diameterMm }} mm - {{ cable.description }}
               </option>
             }
           </select>
           <div class="numeric-input compact">
-            <button class="btn-adjust" (click)="incrementDiameter(-2)">-2</button>
+            <button type="button" class="btn-adjust" (click)="incrementDiameter(-2)">-2</button>
             <input
               type="number"
               [(ngModel)]="cableDiameterMm"
@@ -130,19 +173,18 @@
               max="40"
               step="2"
             />
-            <button class="btn-adjust" (click)="incrementDiameter(2)">+2</button>
+            <button type="button" class="btn-adjust" (click)="incrementDiameter(2)">+2</button>
           </div>
         </div>
         @if (getSelectedCableInfo(); as cableInfo) {
-          <span class="hint">Bruchlast: ~{{ cableInfo.breakingStrength }} kN ({{ minBreakingStrengthNPerMm2 }} N/mm^2)</span>
+          <span class="hint">Typische Bruchlast: etwa {{ cableInfo.breakingStrength }} kN ({{ minBreakingStrengthNPerMm2 }} N/mm^2)</span>
         }
+      </div>
 
-
-      <!-- Breaking Strength Class -->
       <div class="input-group">
         <label>Festigkeitsklasse [N/mm^2]</label>
         <div class="numeric-input">
-          <button class="btn-adjust" (click)="minBreakingStrengthNPerMm2 = minBreakingStrengthNPerMm2 - 50; onValueChange()">-50</button>
+          <button type="button" class="btn-adjust" (click)="minBreakingStrengthNPerMm2 = minBreakingStrengthNPerMm2 - 50; onValueChange()">-50</button>
           <input
             type="number"
             [(ngModel)]="minBreakingStrengthNPerMm2"
@@ -152,17 +194,16 @@
             max="2200"
             step="10"
           />
-          <button class="btn-adjust" (click)="minBreakingStrengthNPerMm2 = minBreakingStrengthNPerMm2 + 50; onValueChange()">+50</button>
+          <button type="button" class="btn-adjust" (click)="minBreakingStrengthNPerMm2 = minBreakingStrengthNPerMm2 + 50; onValueChange()">+50</button>
         </div>
-        <span class="hint">Default: 1960 N/mm^2</span>
-      </div>
+        <span class="hint">Standardwert: 1960 N/mm^2</span>
       </div>
 
-      <!-- Material Type (NEW) -->
       <div class="input-group">
         <label>Material</label>
         <div class="material-selector">
           <button
+            type="button"
             class="material-btn"
             [class.selected]="cableMaterial === 'steel'"
             (click)="selectMaterial('steel')"
@@ -170,25 +211,26 @@
             Stahl
           </button>
           <button
+            type="button"
             class="material-btn"
             [class.selected]="cableMaterial === 'synthetic'"
             (click)="selectMaterial('synthetic')"
           >
-            Kunststoff
+            Synthetik
           </button>
         </div>
       </div>
 
       <div class="current-config">
         <div class="config-header">
-          <h3>Engineering / Expertenparameter</h3>
-          <span class="preset-tag">{{ project?.calculationMode === 'engineering' ? 'Aktiv im Engineering-Modus' : 'Fuer Engineering relevant' }}</span>
+          <h3>Ingenieur-Expertenparameter</h3>
+          <span class="preset-tag">{{ project?.calculationMode === 'engineering' ? 'Im Ingenieurmodus aktiv' : 'Für den Ingenieurmodus dokumentiert' }}</span>
         </div>
 
         <div class="input-group">
           <label>E-Modul [kN/mm^2]</label>
           <div class="numeric-input">
-            <button class="btn-adjust" (click)="elasticModulusKNPerMm2 = Math.max(10, elasticModulusKNPerMm2 - 5); onValueChange()">-5</button>
+            <button type="button" class="btn-adjust" (click)="elasticModulusKNPerMm2 = Math.max(10, elasticModulusKNPerMm2 - 5); onValueChange()">-5</button>
             <input
               type="number"
               [(ngModel)]="elasticModulusKNPerMm2"
@@ -198,15 +240,15 @@
               max="400"
               step="1"
             />
-            <button class="btn-adjust" (click)="elasticModulusKNPerMm2 = Math.min(400, elasticModulusKNPerMm2 + 5); onValueChange()">+5</button>
+            <button type="button" class="btn-adjust" (click)="elasticModulusKNPerMm2 = Math.min(400, elasticModulusKNPerMm2 + 5); onValueChange()">+5</button>
           </div>
-          <span class="hint">Default: 100 kN/mm^2. Im Planning-Modus nur dokumentiert, im Engineering-Modus aktiv verwendet.</span>
+          <span class="hint">Standardwert: 100 kN/mm^2. Wird vom globalen Ingenieursolver verwendet.</span>
         </div>
 
         <div class="input-group">
           <label>Fuellfaktor [-]</label>
           <div class="numeric-input">
-            <button class="btn-adjust" (click)="fillFactor = Math.max(0.2, +(fillFactor - 0.05).toFixed(2)); onValueChange()">-0.05</button>
+            <button type="button" class="btn-adjust" (click)="fillFactor = Math.max(0.2, +(fillFactor - 0.05).toFixed(2)); onValueChange()">-0.05</button>
             <input
               type="number"
               [(ngModel)]="fillFactor"
@@ -216,18 +258,17 @@
               max="1"
               step="0.01"
             />
-            <button class="btn-adjust" (click)="fillFactor = Math.min(1, +(fillFactor + 0.05).toFixed(2)); onValueChange()">+0.05</button>
+            <button type="button" class="btn-adjust" (click)="fillFactor = Math.min(1, +(fillFactor + 0.05).toFixed(2)); onValueChange()">+0.05</button>
           </div>
-          <span class="hint">Default: 0.70. Wird fuer die wirksame metallische Querschnittsflaeche verwendet.</span>
+          <span class="hint">Standardwert: 0.70. Definiert die wirksame metallische Querschnittsfläche.</span>
         </div>
       </div>
 
-      <!-- Cable Weight -->
       <div class="input-group">
         <label>Seilgewicht [N/m]</label>
         <div class="numeric-input">
-          <button class="btn-adjust" (click)="incrementWeight(-5)">-5</button>
-          <button class="btn-adjust" (click)="incrementWeight(-1)">-1</button>
+          <button type="button" class="btn-adjust" (click)="incrementWeight(-5)">-5</button>
+          <button type="button" class="btn-adjust" (click)="incrementWeight(-1)">-1</button>
           <input
             type="number"
             [(ngModel)]="cableWeightNPerM"
@@ -236,17 +277,16 @@
             min="5"
             max="200"
           />
-          <button class="btn-adjust" (click)="incrementWeight(1)">+1</button>
-          <button class="btn-adjust" (click)="incrementWeight(5)">+5</button>
+          <button type="button" class="btn-adjust" (click)="incrementWeight(1)">+1</button>
+          <button type="button" class="btn-adjust" (click)="incrementWeight(5)">+5</button>
         </div>
       </div>
 
-      <!-- Horizontal Tension -->
       <div class="input-group">
-        <label>Seilzug H [kN]</label>
+        <label>Horizontale Vorspannung H [kN]</label>
         <div class="numeric-input">
-          <button class="btn-adjust" (click)="incrementTension(-5)">-5</button>
-          <button class="btn-adjust" (click)="incrementTension(-1)">-1</button>
+          <button type="button" class="btn-adjust" (click)="incrementTension(-5)">-5</button>
+          <button type="button" class="btn-adjust" (click)="incrementTension(-1)">-1</button>
           <input
             type="number"
             [(ngModel)]="horizontalTensionKN"
@@ -256,17 +296,16 @@
             max="100"
             step="1"
           />
-          <button class="btn-adjust" (click)="incrementTension(1)">+1</button>
-          <button class="btn-adjust" (click)="incrementTension(5)">+5</button>
+          <button type="button" class="btn-adjust" (click)="incrementTension(1)">+1</button>
+          <button type="button" class="btn-adjust" (click)="incrementTension(5)">+5</button>
         </div>
-        <span class="hint">Durchhang ergibt sich aus H, Seilgewicht und Spannweite</span>
+        <span class="hint">Im Planungsmodus ist H der primaere Eingabewert. Im Ingenieurmodus ist H der unbelastete Ausgangszustand.</span>
       </div>
 
-      <!-- Safety Factor -->
       <div class="input-group">
         <label>Sicherheitsfaktor</label>
         <div class="numeric-input">
-          <button class="btn-adjust" (click)="incrementSafety(-0.5)">-0.5</button>
+          <button type="button" class="btn-adjust" (click)="incrementSafety(-0.5)">-0.5</button>
           <input
             type="number"
             [(ngModel)]="safetyFactor"
@@ -276,16 +315,15 @@
             max="10"
             step="0.5"
           />
-          <button class="btn-adjust" (click)="incrementSafety(0.5)">+0.5</button>
+          <button type="button" class="btn-adjust" (click)="incrementSafety(0.5)">+0.5</button>
         </div>
       </div>
 
-      <!-- Load -->
       <div class="input-group">
         <label>Nutzlast [N]</label>
         <div class="numeric-input">
-          <button class="btn-adjust" (click)="incrementLoad(-500)">-500</button>
-          <button class="btn-adjust" (click)="incrementLoad(-100)">-100</button>
+          <button type="button" class="btn-adjust" (click)="incrementLoad(-500)">-500</button>
+          <button type="button" class="btn-adjust" (click)="incrementLoad(-100)">-100</button>
           <input
             type="number"
             [(ngModel)]="loadN"
@@ -294,17 +332,16 @@
             min="500"
             max="50000"
           />
-          <button class="btn-adjust" (click)="incrementLoad(100)">+100</button>
-          <button class="btn-adjust" (click)="incrementLoad(500)">+500</button>
+          <button type="button" class="btn-adjust" (click)="incrementLoad(100)">+100</button>
+          <button type="button" class="btn-adjust" (click)="incrementLoad(500)">+500</button>
         </div>
         <span class="hint">{{ (loadN / 1000).toFixed(1) }} kN = {{ (loadN / 9.81).toFixed(0) }} kg</span>
       </div>
 
-      <!-- Min Clearance -->
       <div class="input-group">
-        <label>Min. Bodenfreiheit [m]</label>
+        <label>Mindestfreiraum [m]</label>
         <div class="numeric-input">
-          <button class="btn-adjust" (click)="incrementClearance(-0.5)">-0.5</button>
+          <button type="button" class="btn-adjust" (click)="incrementClearance(-0.5)">-0.5</button>
           <input
             type="number"
             [(ngModel)]="minClearanceM"
@@ -314,11 +351,10 @@
             max="10"
             step="0.5"
           />
-          <button class="btn-adjust" (click)="incrementClearance(0.5)">+0.5</button>
+          <button type="button" class="btn-adjust" (click)="incrementClearance(0.5)">+0.5</button>
         </div>
       </div>
 
-      <!-- Errors -->
       @if (errors().length > 0) {
         <div class="error-box">
           @for (err of errors(); track err) {
@@ -327,20 +363,18 @@
         </div>
       }
 
-      <!-- Save as Preset Button -->
-      <button class="btn-save-preset" (click)="openSavePresetDialog()">
+      <button type="button" class="btn-save-preset" (click)="openSavePresetDialog()">
         <span class="icon">💾</span>
         <span>Als Preset speichern</span>
       </button>
     </div>
   }
 
-  <!-- Save Preset Dialog -->
   @if (showSavePresetDialog()) {
     <div class="dialog-overlay" (click)="closeSavePresetDialog()">
       <div class="dialog-content" (click)="$event.stopPropagation()">
         <h3>Preset speichern</h3>
-        <p>Aktuelle Konfiguration als wiederverwendbares Preset speichern.</p>
+        <p>Speichern Sie die aktuelle Seilkonfiguration als wiederverwendbares lokales Preset.</p>
 
         <div class="dialog-form">
           <label for="presetName">Preset-Name</label>
@@ -348,16 +382,17 @@
             id="presetName"
             type="text"
             [(ngModel)]="newPresetName"
-            placeholder="z.B. Mein Forstseil 18mm"
+            placeholder="z. B. Forstseil 18 mm"
             [disabled]="savePresetStatus() === 'saving'"
           />
         </div>
 
         <div class="dialog-actions">
-          <button class="btn-cancel" (click)="closeSavePresetDialog()" [disabled]="savePresetStatus() === 'saving'">
+          <button type="button" class="btn-cancel" (click)="closeSavePresetDialog()" [disabled]="savePresetStatus() === 'saving'">
             Abbrechen
           </button>
           <button
+            type="button"
             class="btn-save"
             (click)="saveAsPreset()"
             [disabled]="!newPresetName.trim() || savePresetStatus() === 'saving'"
@@ -367,7 +402,7 @@
                 <span class="spinner"></span> Speichern...
               }
               @case ('success') {
-                ✓ Gespeichert!
+                ✓ Gespeichert
               }
               @case ('error') {
                 ✗ Fehler

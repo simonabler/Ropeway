@@ -37,18 +37,34 @@
 
       <section class="workflow-section">
         <div class="section-header">
-          <h2>Geländeprofil erfassen</h2>
-          <p>Erfassen Sie das Bodenprofil mit Laser-Messungen (Länge + Steigung %)</p>
+          <h2>Technische Stationen</h2>
+          <p>Start- und Endstation werden hier als technische Endpunkte gepflegt. Die Karte bleibt der geografische Bezug.</p>
+        </div>
+        <app-station-editor></app-station-editor>
+      </section>
+
+      <section class="workflow-section">
+        <div class="section-header">
+          <h2>Gelaendeprofil erfassen</h2>
+          <p>Erfassen Sie das Bodenprofil mit Laser-Messungen (Laenge und Steigung in Prozent).</p>
         </div>
         <app-terrain-input></app-terrain-input>
       </section>
 
       <section class="workflow-section">
         <div class="section-header">
-          <h2>Stützen platzieren</h2>
-          <p>Positionieren Sie die Stützen entlang der Strecke</p>
+          <h2>Stuetzen platzieren</h2>
+          <p>Positionieren Sie die Stuetzen entlang der Strecke.</p>
         </div>
         <app-support-placement></app-support-placement>
+      </section>
+
+      <section class="workflow-section">
+        <div class="section-header">
+          <h2>Betriebs- und Ueberwachungsbereich</h2>
+          <p>Legen Sie fest, welcher Abschnitt aktiv ueberwacht wird und ob die Randstuetzen ueberfahrbar sind.</p>
+        </div>
+        <app-operational-envelope-editor></app-operational-envelope-editor>
       </section>
 
       <section class="workflow-section">
@@ -62,15 +78,15 @@
       <section class="workflow-section">
         <div class="section-header">
           <h2>Berechnung</h2>
-          <p>Seilstatik berechnen und Ergebnisse anzeigen</p>
+          <p>Berechnen Sie die Seilstatik und pruefen Sie die Ergebnisse.</p>
         </div>
         <app-calculation-results></app-calculation-results>
       </section>
 
       <section class="workflow-section visualization-section">
         <div class="section-header">
-          <h2>Profil-Visualisierung</h2>
-          <p>Interaktive Darstellung von Gelände, Seil und Stützen</p>
+          <h2>Profilansicht</h2>
+          <p>Interaktive Darstellung von Gelaende, Seil, Stuetzen und aktiv ueberwachtem Bereich.</p>
         </div>
         <app-profile-chart></app-profile-chart>
       </section>
@@ -78,7 +94,7 @@
       <section class="workflow-section">
         <div class="section-header">
           <h2>Export</h2>
-          <p>Projekt als PDF-Bericht, DXF-Zeichnung oder JSON-Daten exportieren</p>
+          <p>Exportieren Sie das Projekt als PDF-Bericht, DXF-Zeichnung oder JSON-Daten.</p>
         </div>
         <app-export-panel></app-export-panel>
       </section>

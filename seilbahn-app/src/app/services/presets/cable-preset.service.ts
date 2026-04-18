@@ -15,6 +15,7 @@ export class CablePresetService {
   readonly presets$ = this.presetsSubject.asObservable();
 
   private systemPresetsLoaded = false;
+  private readonly systemPresetSchemaVersion = 1;
 
   constructor(private indexedDbService: IndexedDbService) {
     this.loadAllPresets();
@@ -41,12 +42,17 @@ export class CablePresetService {
   private async loadSystemPresets(): Promise<void> {
     try {
       const response = await fetch('/assets/presets/system-cable-presets.json');
-      const systemPresets: CableParameterSet[] = await response.json();
+      const rawSystemPresets: CableParameterSet[] = await response.json();
+      const systemPresets = rawSystemPresets.map((preset) => this.normalizePreset(preset, true));
 
-      // Save system presets to IndexedDB
       for (const preset of systemPresets) {
         const existing = await this.indexedDbService.loadCablePreset(preset.id);
-        if (!existing) {
+        if (
+          !existing ||
+          existing.isSystemPreset !== true ||
+          (existing.version ?? 0) < (preset.version ?? 0) ||
+          existing.configHash !== preset.configHash
+        ) {
           await this.indexedDbService.saveCablePreset(preset);
         }
       }
@@ -66,13 +72,13 @@ export class CablePresetService {
    * Save a user-defined preset
    */
   async saveUserPreset(preset: Omit<CableParameterSet, 'id' | 'isSystemPreset' | 'createdAt' | 'updatedAt'>): Promise<CableParameterSet> {
-    const newPreset: CableParameterSet = {
+    const newPreset = this.normalizePreset({
       ...preset,
       id: this.generateUUID(),
       isSystemPreset: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    };
+    }, false);
 
     await this.indexedDbService.saveCablePreset(newPreset);
     await this.loadAllPresets();
@@ -93,13 +99,13 @@ export class CablePresetService {
       throw new Error('Cannot update system preset');
     }
 
-    const updatedPreset: CableParameterSet = {
+    const updatedPreset = this.normalizePreset({
       ...preset,
       ...updates,
       id: preset.id, // Ensure ID doesn't change
       isSystemPreset: false, // Ensure system flag doesn't change
       updatedAt: new Date().toISOString()
-    };
+    }, false);
 
     await this.indexedDbService.saveCablePreset(updatedPreset);
     await this.loadAllPresets();
@@ -150,6 +156,8 @@ export class CablePresetService {
     diffs: Array<{ field: string; configValue: number; presetValue: number }>;
   } {
     const diffs: Array<{ field: string; configValue: number; presetValue: number }> = [];
+    const refSpan = 100;
+    const presetHorizontalTensionKN = (preset.carrier.wNPerM * refSpan * refSpan) / (8 * preset.carrier.sagFM) / 1000;
 
     // Compare weight (convert to N/m for comparison)
     const cableWeightN = cable.cableWeightPerMeter * 9.81;
@@ -158,6 +166,14 @@ export class CablePresetService {
         field: 'cableWeightPerMeter',
         configValue: cableWeightN,
         presetValue: preset.carrier.wNPerM
+      });
+    }
+
+    if (Math.abs(cable.horizontalTensionKN - presetHorizontalTensionKN) > 0.1) {
+      diffs.push({
+        field: 'horizontalTensionKN',
+        configValue: cable.horizontalTensionKN,
+        presetValue: presetHorizontalTensionKN
       });
     }
 
@@ -239,6 +255,7 @@ export class CablePresetService {
     return {
       name,
       description,
+      version: 1,
       cable: {
         diameterMm: cable.cableDiameterMm,
         breakingStrengthKN: cable.cableBreakingStrengthKN || this.calculateBreakingStrength(cable.cableDiameterMm, cable.cableMaterial),
@@ -288,6 +305,53 @@ export class CablePresetService {
       const r = (Math.random() * 16) | 0;
       const v = c === 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
+    });
+  }
+
+  getPresetVersion(preset: CableParameterSet | undefined): number | null {
+    return preset?.version ?? null;
+  }
+
+  private normalizePreset(preset: CableParameterSet, isSystemPreset: boolean): CableParameterSet {
+    const version = preset.version ?? (isSystemPreset ? this.systemPresetSchemaVersion : 1);
+    const normalizedPreset: CableParameterSet = {
+      ...preset,
+      version,
+      isSystemPreset,
+      configHash: preset.configHash ?? this.createConfigHashFromPreset(preset)
+    };
+
+    return {
+      ...normalizedPreset,
+      configHash: this.createConfigHashFromPreset(normalizedPreset)
+    };
+  }
+
+  private createConfigHashFromPreset(preset: CableParameterSet): string {
+    const signature = {
+      diameterMm: preset.cable.diameterMm,
+      breakingStrengthKN: preset.cable.breakingStrengthKN,
+      breakingStrengthNPerMm2: preset.cable.breakingStrengthNPerMm2 || 1960,
+      material: preset.cable.material,
+      wNPerM: preset.carrier.wNPerM,
+      sagFM: preset.carrier.sagFM,
+      safetyFactor: preset.carrier.safetyFactor,
+      loadPN: preset.load.PN,
+      minClearanceM: preset.limits.minClearanceM
+    };
+
+    return JSON.stringify(signature);
+  }
+
+  private createConfigHashFromCable(cable: CableConfiguration): string {
+    const presetLike = this.createPresetFromConfig('hash', 'hash', cable);
+    return this.createConfigHashFromPreset({
+      ...presetLike,
+      id: 'hash',
+      isSystemPreset: false,
+      createdAt: '',
+      updatedAt: '',
+      version: 1
     });
   }
 }

@@ -1,20 +1,21 @@
 # Seilbahn PWA
 
-Seilbahn PWA is a mobile-first Angular Progressive Web App for early-stage planning of material ropeways. It is designed for field use on phones and tablets and combines route orientation, terrain capture, support placement, cable configuration, structural calculation, visualization, and export in one workflow.
+Seilbahn PWA is a mobile-first Angular Progressive Web App for planning and engineering-oriented review of material ropeways. It is designed for field use on phones and tablets and combines route orientation, terrain capture, technical station editing, support placement, cable configuration, structural calculation, visualization, and export in one workflow.
 
 ## Current Status
 
 The application currently provides a single project detail workflow with these sections:
 
 1. Start point and end point on a Leaflet map
-2. Terrain profile capture
-3. Support placement
-4. Cable presets and manual cable configuration
-5. Calculation with selectable solver
-6. D3 profile visualization and load simulation
-7. Export to PDF, DXF, and JSON
+2. Dedicated technical station editor for start and end station
+3. Terrain profile capture
+4. Support placement
+5. Cable presets and manual cable configuration
+6. Calculation with explicit `Planning` and `Engineering` families
+7. D3 profile visualization with active load-case controls
+8. Export to PDF, DXF, and JSON
 
-The data model still contains `startStation` and `endStation`, but there is no dedicated station editor in the UI at the moment. The map now stores a geographic start point and geographic end point; the azimuth is synchronized from that route geometry. Before calculation, the app still derives the engineering `endStation` terrain height and station length from the last terrain point.
+The map stores a geographic route with `startPoint`, `endPoint`, and synchronized `azimuth`. The technical station editor stores `startStation` and `endStation` as engineering endpoint objects. In `auto` mode their station length and terrain elevation are synchronized from the terrain profile; in `manual` mode the user can override them directly.
 
 ## Key Features
 
@@ -33,29 +34,54 @@ The data model still contains `startStation` and `endStation`, but there is no d
 - Manual terrain segment entry
 - Automatic total length and elevation change updates
 - Manual support placement along the route
+- Dedicated technical station editor with:
+  - identifier and notes
+  - auto/manual derivation mode
+  - station length
+  - terrain elevation
+  - anchor height above terrain
+  - anchor metadata
 
 ### Cable configuration
 - Built-in system presets from JSON
 - User-defined presets stored in IndexedDB
 - Manual configuration of cable weight, horizontal tension, safety factor, load, clearance, diameter, strength class, and material
+- Engineering expert inputs:
+  - `elasticModulusKNPerMm2`
+  - `fillFactor`
+- Preset integrity metadata in the UI:
+  - preset origin
+  - preset version
+  - modified / aligned state
+  - missing preset reference cleanup
 
 ### Calculation
-- Solver selection:
+- Calculation family selection:
+  - `planning`
+  - `engineering`
+- Planning solvers:
   - `parabolic`
   - `catenary`
   - `catenary-piecewise`
+- Engineering solver:
+  - `global-elastic-catenary`
+- Engineering design modes:
+  - `selected`
+  - `worst-case`
 - Automatic recalculation when relevant project data changes
 - Span geometry, tension, clearance, anchor forces, support reactions, and cable capacity checks
+- Engineering metrics such as solved `H`, reference length, loaded length, unstretched length, and per-span extension
 
 ### Visualization
 - Interactive D3 chart for terrain, cable line, supports, and clearance
 - Zoom, pan, and fullscreen mode
-- Live load simulation with adjustable:
+- Session-level active load-case controls with adjustable:
   - horizontal tension
   - point load
   - load position
-  - cable weight
+- Reset back to the saved project parameters
 - Anchor force overlays and live cable utilization feedback
+- Engineering-mode visualization of the selected case or the worst-case envelope
 
 ### Export
 - Multi-page PDF report with project data and calculation results
@@ -75,9 +101,38 @@ The data model still contains `startStation` and `endStation`, but there is no d
 - jsPDF and html2canvas for PDF export
 - Vitest via Angular test command
 
-## Calculation Solvers
+## Calculation Families and Solvers
 
-The application supports three solver modes for cable shape and force calculation. All three use the same project inputs, span geometry, clearance checks, and cable capacity validation, but they differ in their physical model and intended use.
+The application now exposes two product families with intentionally different semantics.
+
+### Planning family
+
+Planning mode is for fast route screening and early feasibility checks. It keeps the configured horizontal pretension as the primary input and uses simplified span-based mechanics.
+
+Available planning solvers:
+
+- `parabolic`
+- `catenary`
+- `catenary-piecewise`
+
+### Engineering family
+
+Engineering mode is for stricter technical review and scenario discussion. It uses the `global-elastic-catenary` solver, accepts rope elasticity inputs, and can evaluate either the active load case or a worst-case envelope across sampled payload positions.
+
+Engineering design modes:
+
+- `selected`
+- `worst-case`
+
+### Shared calculation pipeline
+
+Both families use the same project workflow, terrain profile, technical stations, support topology, cable capacity checks, and export pipeline. The meaning of the results differs by family, and both the UI and PDF export now show:
+
+- family
+- method
+- intended use
+- governing load case
+- model assumptions
 
 ### Shared calculation model
 
@@ -163,10 +218,6 @@ Characteristics:
 - introduces a point load into the span calculation
 - useful for loaded-case estimation beyond pure self-weight
 
-Current implementation note:
-
-- in the current calculation pipeline, the point load is assumed at mid-span for each span
-
 Tradeoffs:
 
 - more realistic for loaded scenarios than the other two modes
@@ -175,8 +226,9 @@ Tradeoffs:
 ### Solver selection guidance
 
 - Choose `parabolic` for fast first-pass planning.
-- Choose `catenary` when you want the best unloaded cable shape from the current solvers.
-- Choose `catenary-piecewise` when the payload effect should be included, knowing that the current implementation assumes a centered point load.
+- Choose `catenary` when you want a better unloaded planning curve than the parabolic approximation.
+- Choose `catenary-piecewise` when the payload effect should be included in the planning family.
+- Choose `global-elastic-catenary` in engineering mode when you need a global multi-span response with elastic rope inputs and optional worst-case envelope scanning.
 
 ## Repository Layout
 
@@ -214,11 +266,13 @@ Tradeoffs:
 - `src/app/services/state/project-state.service.ts`
   - central project state
   - auto-save
-  - updates for terrain, supports, cable config, solver, and calculation result
+  - updates for terrain, supports, route geometry, technical stations, cable config, solver, and calculation result
 - `src/app/services/storage/indexed-db.service.ts`
   - Dexie wrapper for projects and cable presets
 - `src/app/services/calculation/cable-calculator.service.ts`
   - main calculation orchestration
+- `src/app/services/calculation/engineering/global-engineering-calculator.service.ts`
+  - global elastic multi-span engineering solver
 - `src/app/services/presets/cable-preset.service.ts`
   - system and user presets
 - `src/app/services/geo/leaflet-map.service.ts`
@@ -233,6 +287,7 @@ Tradeoffs:
 - `src/app/features/project/project-create`
 - `src/app/features/project/project-detail`
 - `src/app/features/map/map-container`
+- `src/app/features/station/station-editor`
 - `src/app/features/terrain/terrain-input`
 - `src/app/features/support/support-placement`
 - `src/app/features/cable/cable-config`
@@ -306,16 +361,15 @@ The included compose file is prepared for Traefik-based deployment.
 ## Domain Notes
 
 - Cable presets are loaded from `src/assets/presets/system-cable-presets.json`
-- User presets are persisted locally
+- User presets are persisted locally and system presets carry schema version metadata
 - Cable capacity is checked against the explicitly selected cable diameter and strength class
-- The chart includes a separate simulation layer that can visualize empty cable, loaded cable, critical clearance, anchor points, and live force feedback
+- The profile chart drives the active load case used by the current calculation result
+- Geographic route editing and technical station editing are intentionally separate concepts
 
 ## Known Gaps
 
-- No dedicated UI for editing start station and end station parameters
-- The geographic end point is a planning marker only; the engineering `endStation` is still derived from the terrain profile
-- `presetModified$` in the state service is still a placeholder
-- Limited automated test coverage
+- Engineering mode is still a V1 solver without saddle friction, mast compliance, or anchor compliance
+- Benchmark coverage exists for core solver paths but is still a minimum viable regression suite
 - No offline map caching or advanced field sync strategy yet
 
 ## Documentation

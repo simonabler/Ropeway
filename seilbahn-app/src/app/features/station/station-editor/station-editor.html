@@ -1,0 +1,116 @@
+<div class="station-editor-container">
+  <div class="station-editor-intro">
+    <h3>Technischer Stationseditor</h3>
+    <p>
+      Kartenendpunkt = geografische Trasse. Stationseditor = technische Endpunktparameter fuer die Berechnung.
+    </p>
+  </div>
+
+  <div class="station-grid">
+    @for (station of [startStation, endStation]; track station?.type) {
+      @if (station) {
+        <div class="station-card">
+          <div class="station-card-header">
+            <h4>{{ stationTitle(station.type) }}</h4>
+            <span class="station-mode" [class.manual]="station.derivationMode === 'manual'">
+              {{ station.derivationMode === 'manual' ? 'Manuelle Ueberschreibung' : 'Automatisch aus dem Gelaende abgeleitet' }}
+            </span>
+          </div>
+
+          <div class="input-group">
+            <label>Bezeichnung</label>
+            <input
+              type="text"
+              [ngModel]="station.identifier || ''"
+              (ngModelChange)="updateStationField(station.type, 'identifier', $event)"
+              placeholder="z. B. Talstation"
+            />
+          </div>
+
+          <div class="input-group">
+            <label>Ableitungsmodus</label>
+            <select
+              [ngModel]="station.derivationMode || 'auto'"
+              (ngModelChange)="updateDerivationMode(station.type, $event)"
+            >
+              <option value="auto">Automatisch aus dem Gelaendeprofil</option>
+              <option value="manual">Manuelle Ueberschreibung</option>
+            </select>
+          </div>
+
+          <div class="station-input-grid">
+            <div class="input-group">
+              <label>Stationslaenge [m]</label>
+              <input
+                type="number"
+                [ngModel]="station.stationLength"
+                (ngModelChange)="updateStationField(station.type, 'stationLength', $event)"
+                [disabled]="(station.derivationMode || 'auto') === 'auto'"
+                step="0.1"
+              />
+            </div>
+
+            <div class="input-group">
+              <label>Gelaendehoehe [m]</label>
+              <input
+                type="number"
+                [ngModel]="station.terrainHeight"
+                (ngModelChange)="updateStationField(station.type, 'terrainHeight', $event)"
+                [disabled]="(station.derivationMode || 'auto') === 'auto'"
+                step="0.1"
+              />
+            </div>
+
+            <div class="input-group">
+              <label>Ankerhoehe ueber Gelaende [m]</label>
+              <input
+                type="number"
+                [ngModel]="station.anchorPoint.heightAboveTerrain"
+                (ngModelChange)="updateAnchorHeight(station.type, $event)"
+                step="0.1"
+              />
+            </div>
+
+            <div class="input-group">
+              <label>Lokaler Mindestfreiraum [m]</label>
+              <input
+                type="number"
+                [ngModel]="station.groundClearance"
+                (ngModelChange)="updateStationField(station.type, 'groundClearance', $event)"
+                step="0.1"
+              />
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label>Anker-Metadaten</label>
+            <input
+              type="text"
+              [ngModel]="station.anchorMetadata || ''"
+              (ngModelChange)="updateStationField(station.type, 'anchorMetadata', $event)"
+              placeholder="Ankertyp, Baum, Felsanker usw."
+            />
+          </div>
+
+          <div class="input-group">
+            <label>Technische Notizen</label>
+            <textarea
+              rows="3"
+              [ngModel]="station.notes || ''"
+              (ngModelChange)="updateStationField(station.type, 'notes', $event)"
+              placeholder="stationsspezifische Hinweise"
+            ></textarea>
+          </div>
+
+          @if (getStationValidationMessages(station).length > 0) {
+            <div class="station-validation">
+              @for (message of getStationValidationMessages(station); track message) {
+                <p>{{ message }}</p>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+  </div>
+</div>

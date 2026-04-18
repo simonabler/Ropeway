@@ -4,6 +4,7 @@ import { Support } from './support.model';
 import { EndStation } from './end-station.model';
 import { CableConfiguration } from './cable.model';
 import { CalculationMode, CalculationResult, EngineeringDesignMode, SolverType } from './calculation.model';
+import { OperationalEnvelope } from './operational-envelope.model';
 
 /**
  * Main Project Model
@@ -32,6 +33,7 @@ export interface Project {
   supports: Support[];
   startStation: EndStation;
   endStation: EndStation;
+  operationalEnvelope: OperationalEnvelope;
   cableConfig: CableConfiguration;
   cablePresetId?: string;                // M4.5: Reference to preset
   calculationMode?: CalculationMode;     // planning vs engineering

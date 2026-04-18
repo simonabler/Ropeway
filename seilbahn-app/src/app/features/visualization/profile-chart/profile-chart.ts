@@ -7,6 +7,7 @@ import { ProjectStateService } from '../../../services/state/project-state.servi
 import { TerrainSegment, Support, CalculationResult, CablePoint } from '../../../models';
 import { calculatePiecewiseCatenaryCable } from '../../../services/calculation/engine/physics/piecewise-catenary';
 import { solveCatenaryA } from '../../../services/calculation/engine/physics/catenary-utils';
+import { deriveEdgeSupportTraversability } from '../../../services/operations/operational-envelope';
 
 interface ChartPoint {
   x: number;
@@ -191,6 +192,27 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     return this._effectiveProject();
   }
 
+  get activeMonitoredRangeText(): string {
+    const project = this.effectiveProject ?? this.projectStateService.currentProject;
+    if (!project) return '-';
+
+    return `${project.operationalEnvelope.activeMonitoredRangeStartStation.toFixed(1)} m bis ${project.operationalEnvelope.activeMonitoredRangeEndStation.toFixed(1)} m`;
+  }
+
+  get edgeSupportTraversabilityText(): string {
+    const project = this.effectiveProject ?? this.projectStateService.currentProject;
+    if (!project) return '-';
+
+    const traversability = deriveEdgeSupportTraversability(
+      project.operationalEnvelope,
+      this.supports,
+      project.startStation.stationLength,
+      project.endStation.stationLength
+    );
+
+    return `Erste Randstuetze ${traversability.firstSupportTraversable ? 'ueberfahrbar' : 'nicht ueberfahrbar'}, letzte Randstuetze ${traversability.lastSupportTraversable ? 'ueberfahrbar' : 'nicht ueberfahrbar'}`;
+  }
+
   private isEngineeringCalculation(): boolean {
     return this.calculation?.calculationMode === 'engineering';
   }
@@ -301,6 +323,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
     // Create groups for different layers (order matters for z-index)
     this.chartGroup.append('g').attr('class', 'grid-layer');
+    this.chartGroup.append('g').attr('class', 'operational-range-layer').attr('clip-path', 'url(#chart-clip)');
     this.chartGroup.append('g').attr('class', 'terrain-layer').attr('clip-path', 'url(#chart-clip)');
     this.chartGroup.append('g').attr('class', 'clearance-layer').attr('clip-path', 'url(#chart-clip)');
     this.chartGroup.append('g').attr('class', 'empty-cable-layer').attr('clip-path', 'url(#chart-clip)');
@@ -466,6 +489,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private renderAll(xScale: d3.ScaleLinear<number, number>, yScale: d3.ScaleLinear<number, number>): void {
+    this.renderOperationalRange(xScale);
     this.renderTerrain(xScale, yScale);
     this.renderClearanceZone(xScale, yScale);
     this.renderEmptyCable(xScale, yScale);
@@ -475,6 +499,40 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     this.calculateAnchorForces();
     this.renderAnchorPoints(xScale, yScale);
     this.renderCriticalPoint(xScale, yScale);
+  }
+
+  private renderOperationalRange(xScale: d3.ScaleLinear<number, number>): void {
+    const layer = this.chartGroup?.select('.operational-range-layer');
+    const project = this.effectiveProject ?? this.projectStateService.currentProject;
+    if (!layer || !project) return;
+
+    const start = project.operationalEnvelope.activeMonitoredRangeStartStation;
+    const end = project.operationalEnvelope.activeMonitoredRangeEndStation;
+    const xStart = xScale(start);
+    const xEnd = xScale(end);
+
+    layer.selectAll('*').remove();
+
+    layer.append('rect')
+      .attr('class', 'operational-range-band')
+      .attr('x', xStart)
+      .attr('y', 0)
+      .attr('width', Math.max(xEnd - xStart, 0))
+      .attr('height', this.dimensions.innerHeight);
+
+    layer.append('line')
+      .attr('class', 'operational-range-boundary')
+      .attr('x1', xStart)
+      .attr('x2', xStart)
+      .attr('y1', 0)
+      .attr('y2', this.dimensions.innerHeight);
+
+    layer.append('line')
+      .attr('class', 'operational-range-boundary')
+      .attr('x1', xEnd)
+      .attr('x2', xEnd)
+      .attr('y1', 0)
+      .attr('y2', this.dimensions.innerHeight);
   }
 
   toggleAnchorForces(): void {

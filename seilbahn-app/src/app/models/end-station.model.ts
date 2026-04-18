@@ -8,6 +8,10 @@ export interface EndStation {
   anchorPoint: AnchorPoint;
   platformHeight?: number;       // Future: custom station heights
   groundClearance: number;
+  identifier?: string;
+  notes?: string;
+  derivationMode?: 'auto' | 'manual';
+  anchorMetadata?: string;
 }
 
 /**

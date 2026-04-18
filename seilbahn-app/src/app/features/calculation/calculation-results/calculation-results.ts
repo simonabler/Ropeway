@@ -13,6 +13,7 @@ import {
 } from '../../../models';
 import { ProjectStateService } from '../../../services/state/project-state.service';
 import { CableCalculatorService } from '../../../services/calculation/cable-calculator.service';
+import { deriveEdgeSupportTraversability } from '../../../services/operations/operational-envelope';
 
 @Component({
   selector: 'app-calculation-results',
@@ -99,7 +100,7 @@ export class CalculationResults {
     return [
       { value: 'parabolic', label: 'Parabel (schnell)' },
       { value: 'catenary', label: 'Kettenlinie (genauer)' },
-      { value: 'catenary-piecewise', label: 'Kettenlinie stückweise (mit Punktlast)' }
+      { value: 'catenary-piecewise', label: 'Kettenlinie stueckweise (mit Punktlast)' }
     ];
   }
 
@@ -121,10 +122,10 @@ export class CalculationResults {
 
   getCannotCalculateReason(): string {
     if (this.terrain.length === 0) {
-      return 'Bitte zuerst das Geländeprofil erfassen';
+      return 'Bitte zuerst das Gelaendeprofil erfassen';
     }
     if (this.supports.length === 0) {
-      return 'Bitte mindestens eine Stütze setzen';
+      return 'Bitte mindestens eine Stuetze setzen';
     }
     return '';
   }
@@ -137,22 +138,7 @@ export class CalculationResults {
 
     setTimeout(() => {
       try {
-        const totalLength = this.terrain.length > 0
-          ? this.terrain[this.terrain.length - 1].stationLength
-          : 0;
-        const endHeight = this.terrain.length > 0
-          ? this.terrain[this.terrain.length - 1].terrainHeight
-          : 0;
-
-        if (
-          project.endStation.stationLength !== totalLength ||
-          project.endStation.terrainHeight !== endHeight
-        ) {
-          this.projectStateService.updateEndStation({
-            stationLength: totalLength,
-            terrainHeight: endHeight
-          });
-        }
+        this.projectStateService.synchronizeStationsFromTerrain();
 
         const projectForCalculation = this.projectStateService.currentEffectiveProject ?? project;
         const result = this.cableCalculatorService.calculateCable(projectForCalculation);
@@ -294,11 +280,67 @@ export class CalculationResults {
     return this.engineeringDesignMode === 'worst-case' ? 'Worst-Case-Huellkurve' : 'Aktiver Lastfall';
   }
 
-  get modeDescription(): string {
+  get intendedUseText(): string {
     if (this.calculationMode === 'engineering') {
-      return 'Engineering result: global elastic multi-span analysis with shared H solution';
+      return 'Fuer technische Reviews, Variantendiskussionen und strengere Vordimensionierung.';
     }
 
-    return 'Planning result: simplified pretension-based approximation';
+    return 'Fuer schnelle Trassenbewertung, Machbarkeitspruefungen und fruehe Planungsentscheidungen.';
+  }
+
+  get solverDescription(): string {
+    switch (this.solverType) {
+      case 'parabolic':
+        return 'Schnelle, vorspannungsbasierte Naeherung fuer Screening und schnelle Iterationen.';
+      case 'catenary':
+        return 'Genauere unbelastete Seilgeometrie fuer Form- und Freiraumpruefungen auf Planungsebene.';
+      case 'catenary-piecewise':
+        return 'Planungs-Solver mit konzentrierter Punktlast im aktiven Spannfeld.';
+      case 'global-elastic-catenary':
+        return 'Globaler elastischer Mehrfeld-Solver mit gemeinsam geloester Horizontalkraft.';
+      default:
+        return '';
+    }
+  }
+
+  get modeDescription(): string {
+    if (this.calculationMode === 'engineering') {
+      return 'Ingenieurmodus: globale elastische Mehrfeldanalyse mit gemeinsam geloester Horizontalkraft';
+    }
+
+    return 'Planungsmodus: vereinfachte vorspannungsbasierte Naeherung';
+  }
+
+  get activeRangeText(): string {
+    const project = this.project;
+    if (!project) return '-';
+
+    return `${project.operationalEnvelope.activeMonitoredRangeStartStation.toFixed(1)} m bis ${project.operationalEnvelope.activeMonitoredRangeEndStation.toFixed(1)} m`;
+  }
+
+  get traversabilityText(): string {
+    const project = this.project;
+    if (!project) return '-';
+
+    const traversability = deriveEdgeSupportTraversability(
+      project.operationalEnvelope,
+      project.supports,
+      project.startStation.stationLength,
+      project.endStation.stationLength
+    );
+
+    return `Erste Randstuetze ${traversability.firstSupportTraversable ? 'ueberfahrbar' : 'nicht ueberfahrbar'}, letzte Randstuetze ${traversability.lastSupportTraversable ? 'ueberfahrbar' : 'nicht ueberfahrbar'}`;
+  }
+
+  getOperationalWarningBadge(warning: CalculationWarning): string | null {
+    if (warning.operationalRangeContext === 'inside-active-range') {
+      return 'Aktiv ueberwacht';
+    }
+
+    if (warning.operationalRangeContext === 'outside-active-range') {
+      return 'Ausserhalb des aktiven Bereichs';
+    }
+
+    return null;
   }
 }

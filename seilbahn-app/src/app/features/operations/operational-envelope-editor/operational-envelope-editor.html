@@ -1,0 +1,73 @@
+<div class="operational-envelope-container">
+  <div class="operational-envelope-intro">
+    <h3>Betriebs- und Überwachungsbereich</h3>
+    <p>
+      Der aktiv überwachte Bereich wird entlang der Stationskoordinate definiert. Die Überfahrbarkeit der ersten und letzten
+      Stütze dient als Bedienhilfe und setzt die Bereichsgrenzen entsprechend.
+    </p>
+  </div>
+
+  <div class="operational-envelope-grid">
+    <div class="operational-card">
+      <div class="checkbox-group">
+        <label>
+          <input
+            type="checkbox"
+            [checked]="derivedTraversability.firstSupportTraversable"
+            (change)="setFirstSupportTraversable($any($event.target).checked)"
+            [disabled]="supports.length === 0"
+          />
+          Erste Stütze überfahrbar
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            [checked]="derivedTraversability.lastSupportTraversable"
+            (change)="setLastSupportTraversable($any($event.target).checked)"
+            [disabled]="supports.length === 0"
+          />
+          Letzte Stütze überfahrbar
+        </label>
+      </div>
+
+      @if (supports.length === 0) {
+        <p class="info-text">Ohne Stützen entspricht der überwachte Bereich dem Abschnitt zwischen Start- und Endstation.</p>
+      }
+    </div>
+
+    <div class="operational-card">
+      <div class="input-group">
+        <label>Beginn des aktiv überwachten Bereichs [m]</label>
+        <input
+          type="number"
+          [ngModel]="monitoredRangeStart"
+          (ngModelChange)="updateRangeStart($event)"
+          step="0.1"
+        />
+      </div>
+
+      <div class="input-group">
+        <label>Ende des aktiv überwachten Bereichs [m]</label>
+        <input
+          type="number"
+          [ngModel]="monitoredRangeEnd"
+          (ngModelChange)="updateRangeEnd($event)"
+          step="0.1"
+        />
+      </div>
+
+      <div class="range-summary">
+        <div><span>Aktiver Bereich:</span><strong>{{ monitoredRangeStart.toFixed(1) }} m bis {{ monitoredRangeEnd.toFixed(1) }} m</strong></div>
+        <div><span>Außerhalb:</span><strong>nur informativ überwacht</strong></div>
+      </div>
+    </div>
+  </div>
+
+  @if (validationMessages.length > 0) {
+    <div class="validation-box">
+      @for (message of validationMessages; track message) {
+        <p>{{ message }}</p>
+      }
+    </div>
+  }
+</div>

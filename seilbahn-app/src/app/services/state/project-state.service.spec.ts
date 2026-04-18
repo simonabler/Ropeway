@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Project, TerrainSegment } from '../../models';
+import { BehaviorSubject } from 'rxjs';
+import { CableConfiguration, CableParameterSet, Project, TerrainSegment } from '../../models';
 import { ProjectStateService } from './project-state.service';
 
 describe('ProjectStateService', () => {
@@ -17,9 +18,64 @@ describe('ProjectStateService', () => {
     loadProject: vi.fn().mockResolvedValue(undefined)
   });
 
-  const createService = (indexedDbMock = createIndexedDbMock()) => ({
-    service: new ProjectStateService(indexedDbMock as any),
-    indexedDbMock
+  const createPreset = (overrides?: Partial<CableParameterSet>): CableParameterSet => ({
+    id: 'preset-1',
+    name: 'Preset 1',
+    description: 'Test preset',
+    version: 1,
+    configHash: 'hash-1',
+    isSystemPreset: true,
+    createdAt: '2026-04-18T00:00:00.000Z',
+    updatedAt: '2026-04-18T00:00:00.000Z',
+    cable: {
+      diameterMm: 16,
+      breakingStrengthKN: 320,
+      breakingStrengthNPerMm2: 1960,
+      material: 'steel'
+    },
+    carrier: {
+      wNPerM: 49.05,
+      sagFM: 4.0875,
+      safetyFactor: 5,
+      kCoeff: 1600
+    },
+    load: {
+      PN: 4905
+    },
+    limits: {
+      minClearanceM: 2
+    },
+    ...overrides
+  });
+
+  const createPresetServiceMock = (presets: CableParameterSet[] = [createPreset()]) => {
+    const presetsSubject = new BehaviorSubject<CableParameterSet[]>(presets);
+
+    return {
+      presets$: presetsSubject.asObservable(),
+      presetsSubject,
+      compareCableWithPreset: vi.fn((cable: CableConfiguration, preset: CableParameterSet) => {
+        const presetHorizontalTensionKN = (preset.carrier.wNPerM * 100 * 100) / (8 * preset.carrier.sagFM) / 1000;
+        const isModified =
+          Math.abs(cable.cableWeightPerMeter * 9.81 - preset.carrier.wNPerM) > 0.1 ||
+          Math.abs(cable.maxLoad * 9.81 - preset.load.PN) > 1 ||
+          Math.abs(cable.safetyFactor - preset.carrier.safetyFactor) > 0.01 ||
+          Math.abs(cable.minGroundClearance - preset.limits.minClearanceM) > 0.01 ||
+          Math.abs(cable.horizontalTensionKN - presetHorizontalTensionKN) > 0.1 ||
+          cable.cableDiameterMm !== preset.cable.diameterMm;
+
+        return { isModified, diffs: [] };
+      })
+    };
+  };
+
+  const createService = (
+    indexedDbMock = createIndexedDbMock(),
+    presetServiceMock = createPresetServiceMock()
+  ) => ({
+    service: new ProjectStateService(indexedDbMock as any, presetServiceMock as any),
+    indexedDbMock,
+    presetServiceMock
   });
 
   const flushAsync = async () => {
@@ -74,17 +130,67 @@ describe('ProjectStateService', () => {
     expect(after.cableConfig.safetyFactor).toBe(6);
   });
 
-  it('persists end station updates in project state', () => {
+  it('syncs auto-derived station values from the terrain profile', () => {
+    const { service } = createService();
+    service.createNewProject('test');
+
+    service.updateTerrainSegments([
+      {
+        id: '1',
+        segmentNumber: 1,
+        lengthMeters: 50,
+        slopePercent: 10,
+        stationLength: 50,
+        terrainHeight: 5
+      },
+      {
+        id: '2',
+        segmentNumber: 2,
+        lengthMeters: 75,
+        slopePercent: 0,
+        stationLength: 125,
+        terrainHeight: 12
+      }
+    ]);
+
+    expect(service.currentProject?.startStation.stationLength).toBe(0);
+    expect(service.currentProject?.startStation.terrainHeight).toBeCloseTo(0, 6);
+    expect(service.currentProject?.endStation.stationLength).toBe(125);
+    expect(service.currentProject?.endStation.terrainHeight).toBe(12);
+  });
+
+  it('keeps manual station overrides when terrain changes', () => {
     const { service } = createService();
     service.createNewProject('test');
 
     service.updateEndStation({
-      stationLength: 123,
-      terrainHeight: 45
+      derivationMode: 'manual',
+      stationLength: 91,
+      terrainHeight: 44
     });
 
-    expect(service.currentProject?.endStation.stationLength).toBe(123);
-    expect(service.currentProject?.endStation.terrainHeight).toBe(45);
+    service.updateTerrainSegments([
+      {
+        id: '1',
+        segmentNumber: 1,
+        lengthMeters: 50,
+        slopePercent: 0,
+        stationLength: 50,
+        terrainHeight: 10
+      },
+      {
+        id: '2',
+        segmentNumber: 2,
+        lengthMeters: 80,
+        slopePercent: 0,
+        stationLength: 130,
+        terrainHeight: 22
+      }
+    ]);
+
+    expect(service.currentProject?.endStation.derivationMode).toBe('manual');
+    expect(service.currentProject?.endStation.stationLength).toBe(91);
+    expect(service.currentProject?.endStation.terrainHeight).toBe(44);
   });
 
   it('writes start point, end point and synchronized azimuth for route geometry', async () => {
@@ -137,6 +243,10 @@ describe('ProjectStateService', () => {
         terrainHeight: 0,
         anchorPoint: { heightAboveTerrain: 0 },
         groundClearance: 2
+      },
+      operationalEnvelope: {
+        activeMonitoredRangeStartStation: 0,
+        activeMonitoredRangeEndStation: 500
       },
       cableConfig: {
         cableType: 'carrying',
@@ -281,6 +391,68 @@ describe('ProjectStateService', () => {
     expect(service.currentProject?.engineeringDesignMode).toBe('selected');
   });
 
+  it('backfills legacy station identifiers and derivation modes safely', async () => {
+    const indexedDbMock = createIndexedDbMock();
+    const { service } = createService(indexedDbMock);
+
+    const legacyProject = service.createNewProject('legacy');
+    delete (legacyProject.startStation as Partial<Project['startStation']>).identifier;
+    delete (legacyProject.startStation as Partial<Project['startStation']>).derivationMode;
+    delete (legacyProject.endStation as Partial<Project['endStation']>).identifier;
+    delete (legacyProject.endStation as Partial<Project['endStation']>).derivationMode;
+    indexedDbMock.loadProject.mockResolvedValue(legacyProject);
+
+    await service.loadProject('legacy');
+
+    expect(service.currentProject?.startStation.identifier).toBe('Startstation');
+    expect(service.currentProject?.endStation.identifier).toBe('Endstation');
+    expect(service.currentProject?.startStation.derivationMode).toBe('auto');
+    expect(service.currentProject?.endStation.derivationMode).toBe('auto');
+  });
+
+  it('loads legacy projects without operational envelope with a full monitored range', async () => {
+    const indexedDbMock = createIndexedDbMock();
+    const { service } = createService(indexedDbMock);
+
+    const legacyProject = service.createNewProject('legacy');
+    legacyProject.endStation = {
+      ...legacyProject.endStation,
+      stationLength: 120,
+      derivationMode: 'manual'
+    };
+    delete (legacyProject as Partial<Project>).operationalEnvelope;
+    indexedDbMock.loadProject.mockResolvedValue(legacyProject);
+
+    await service.loadProject('legacy');
+
+    expect(service.currentProject?.operationalEnvelope.activeMonitoredRangeStartStation).toBe(0);
+    expect(service.currentProject?.operationalEnvelope.activeMonitoredRangeEndStation).toBe(120);
+  });
+
+  it('normalizes and persists the operational envelope', () => {
+    const { service } = createService();
+    service.createNewProject('test');
+
+    service.updateTerrainSegments([
+      {
+        id: '1',
+        segmentNumber: 1,
+        lengthMeters: 120,
+        slopePercent: 0,
+        stationLength: 120,
+        terrainHeight: 0
+      }
+    ]);
+
+    service.updateOperationalEnvelope({
+      activeMonitoredRangeStartStation: -20,
+      activeMonitoredRangeEndStation: 200
+    });
+
+    expect(service.currentProject?.operationalEnvelope.activeMonitoredRangeStartStation).toBe(0);
+    expect(service.currentProject?.operationalEnvelope.activeMonitoredRangeEndStation).toBe(120);
+  });
+
   it('builds an effective project from calculation overrides and can reset them', () => {
     const { service } = createService();
     service.createNewProject('test');
@@ -326,5 +498,37 @@ describe('ProjectStateService', () => {
 
     expect(service.currentProject?.calculationMode).toBe('engineering');
     expect(service.currentProject?.engineeringDesignMode).toBe('worst-case');
+  });
+
+  it('exposes presetModified$ as a real comparison against the selected preset', async () => {
+    const { service } = createService();
+    service.createNewProject('test');
+
+    const values: boolean[] = [];
+    const subscription = service.presetModified$.subscribe((value) => values.push(value));
+
+    service.setSelectedPresetId('preset-1');
+    await flushAsync();
+
+    service.updateCableConfig({
+      ...service.currentProject!.cableConfig,
+      safetyFactor: 6
+    });
+    await flushAsync();
+
+    expect(values.at(-1)).toBe(true);
+    subscription.unsubscribe();
+  });
+
+  it('clears a selected preset reference safely when the preset is deleted', () => {
+    const { service } = createService();
+    service.createNewProject('test');
+
+    service.setSelectedPresetId('preset-1');
+    expect(service.currentProject?.cablePresetId).toBe('preset-1');
+
+    service.clearSelectedPresetReference('preset-1');
+
+    expect(service.currentProject?.cablePresetId).toBeUndefined();
   });
 });

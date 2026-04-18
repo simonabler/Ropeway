@@ -7,6 +7,8 @@ export interface CableParameterSet {
   id: string;
   name: string;                          // e.g. "Tragseil 16mm Stahl"
   description?: string;
+  version?: number;
+  configHash?: string;
 
   // Cable physical properties (NEW)
   cable: {

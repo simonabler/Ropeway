@@ -7,6 +7,7 @@ import {
   Project,
   SpanResult,
 } from '../../models';
+import { deriveEdgeSupportTraversability } from '../operations/operational-envelope';
 
 type Rgb = [number, number, number];
 type Tone = 'neutral' | 'success' | 'warning' | 'danger';
@@ -165,7 +166,7 @@ export class PdfExportService {
       [
         ['Status', this.getStatusText(project.status)],
         ['Revision', project.revision || '-'],
-        ['Azimut', this.hasEndPoint(project) ? `${project.azimuth.toFixed(1)} deg` : '-'],
+        ['Azimut', this.hasEndPoint(project) ? `${project.azimuth.toFixed(1)} Grad` : '-'],
         ['Startpunkt', this.getStartPointText(project)],
         ['Endpunkt', this.getEndPointText(project)],
       ],
@@ -317,7 +318,7 @@ export class PdfExportService {
         {
           label: 'Trassenlänge',
           value: `${project.terrainProfile.totalLength.toFixed(1)} m`,
-          detail: this.hasEndPoint(project) ? `Azimut ${project.azimuth.toFixed(1)} deg` : 'Endpunkt offen',
+          detail: this.hasEndPoint(project) ? `Azimut ${project.azimuth.toFixed(1)} Grad` : 'Endpunkt offen',
         },
         {
           label: 'Min. Bodenfreiheit',
@@ -369,7 +370,7 @@ export class PdfExportService {
       [
         ['Startpunkt', this.getStartPointText(project)],
         ['Endpunkt', this.getEndPointText(project)],
-        ['Azimut', this.hasEndPoint(project) ? `${project.azimuth.toFixed(1)} deg` : '-'],
+        ['Azimut', this.hasEndPoint(project) ? `${project.azimuth.toFixed(1)} Grad` : '-'],
         ['Talstation', `${project.startStation.anchorPoint.heightAboveTerrain.toFixed(1)} m Ankerhoehe`],
       ],
       this.margin + 6,
@@ -442,6 +443,18 @@ export class PdfExportService {
 
     y += 6;
 
+    this.drawPanel(doc, this.margin, y, this.contentWidth, 32, 'neutral');
+    this.drawPanelTitle(doc, this.margin + 6, y + 8, 'Berechnungssemantik');
+    this.applyTextColor(doc, this.colors.text);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(
+      `Berechnungsfamilie: ${this.getCalculationModeText(calc.calculationMode)} | Vorgesehene Verwendung: ${this.getIntendedUseText(calc)}`,
+      this.margin + 6,
+      y + 18
+    );
+    y += 40;
+
     if (calc.designCheck) {
       this.drawPanel(doc, this.margin, y, this.contentWidth, 28, 'neutral');
       this.drawPanelTitle(doc, this.margin + 6, y + 8, 'Massgebender Lastfall');
@@ -450,8 +463,8 @@ export class PdfExportService {
       doc.setFontSize(10);
       doc.text(
         calc.designCheck.source === 'selected-payload'
-          ? `Aktiver Payload in Feld ${calc.designCheck.governingSpanNumber}, Position ${calc.designCheck.governingLoadPositionM.toFixed(1)} m (${(calc.designCheck.governingSpanLoadRatio * 100).toFixed(0)} % der Spannfeldlaenge).`
-          : `Worst-case-Payload in Feld ${calc.designCheck.governingSpanNumber}, Position ${calc.designCheck.governingLoadPositionM.toFixed(1)} m (${(calc.designCheck.governingSpanLoadRatio * 100).toFixed(0)} % der Spannfeldlaenge).`,
+          ? `Aktive Punktlast in Feld ${calc.designCheck.governingSpanNumber}, Position ${calc.designCheck.governingLoadPositionM.toFixed(1)} m (${(calc.designCheck.governingSpanLoadRatio * 100).toFixed(0)} % der Spannfeldlaenge).`
+          : `Worst-Case-Punktlast in Feld ${calc.designCheck.governingSpanNumber}, Position ${calc.designCheck.governingLoadPositionM.toFixed(1)} m (${(calc.designCheck.governingSpanLoadRatio * 100).toFixed(0)} % der Spannfeldlaenge).`,
         this.margin + 6,
         y + 18
       );
@@ -460,7 +473,7 @@ export class PdfExportService {
 
     if (calc.engineeringMetrics) {
       this.drawPanel(doc, this.margin, y, this.contentWidth, 36, 'neutral');
-      this.drawPanelTitle(doc, this.margin + 6, y + 8, 'Globale Engineering-Kennwerte');
+      this.drawPanelTitle(doc, this.margin + 6, y + 8, 'Globale Ingenieurkennwerte');
       this.drawKeyValueRows(
         doc,
         [
@@ -480,7 +493,7 @@ export class PdfExportService {
           [
             ['Huelle min. Frei.', `${calc.engineeringMetrics.envelope.minClearanceM.toFixed(2)} m`],
             ['Huelle bei Stat.', `${calc.engineeringMetrics.envelope.minClearanceAtM.toFixed(1)} m`],
-            ['Load Cases', `${calc.engineeringMetrics.envelope.sampledLoadCases}`]
+            ['Lastfaelle', `${calc.engineeringMetrics.envelope.sampledLoadCases}`]
           ],
           this.margin + 104,
           y + 15,
@@ -488,6 +501,21 @@ export class PdfExportService {
         );
       }
       y += 44;
+    }
+
+    if (calc.modelAssumptions.length > 0) {
+      const assumptionLines = doc.splitTextToSize(
+        this.getAssumptionsSummary(calc),
+        this.contentWidth - 12
+      );
+      const panelHeight = 16 + assumptionLines.length * 5;
+      this.drawPanel(doc, this.margin, y, this.contentWidth, panelHeight, 'neutral');
+      this.drawPanelTitle(doc, this.margin + 6, y + 8, 'Modellannahmen');
+      this.applyTextColor(doc, this.colors.text);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(assumptionLines, this.margin + 6, y + 17);
+      y += panelHeight + 8;
     }
 
     y = this.drawTable(doc, {
@@ -587,7 +615,7 @@ export class PdfExportService {
         `${force.horizontal.toFixed(2)} kN`,
         `${force.vertical.toFixed(2)} kN`,
         `${force.resultant.toFixed(2)} kN`,
-        `${force.angle.toFixed(1)} deg`,
+        `${force.angle.toFixed(1)} Grad`,
       ]),
       columnWidths: [16, 26, 28, 28, 34, 28],
       startY: y,
@@ -734,13 +762,27 @@ export class PdfExportService {
     );
 
     y += 66;
+    this.drawPanel(doc, this.margin, y, this.contentWidth, 34, 'neutral');
+    this.drawPanelTitle(doc, this.margin + 6, y + 8, 'Betriebs- und Ueberwachungsbereich');
+    this.drawKeyValueRows(
+      doc,
+      [
+        ['Aktiver Bereich', this.getOperationalRangeText(project)],
+        ['Randstuetzen', this.getTraversabilityText(project)],
+      ],
+      this.margin + 6,
+      y + 15,
+      42
+    );
+
+    y += 42;
     this.drawPanel(doc, this.margin, y, this.contentWidth, 104, calc ? this.getCapacityTone(calc) : 'warning');
     this.drawPanelTitle(doc, this.margin + 6, y + 8, 'Tragfaehigkeit und Nachweis');
     this.drawKeyValueRows(
       doc,
       [
         ['Modus', calc ? this.getCalculationModeText(calc.calculationMode) : this.getCalculationModeText(project.calculationMode || 'planning')],
-        ['Engineering-Fall', calc?.engineeringMetrics ? (calc.engineeringMetrics.designMode === 'worst-case' ? 'Worst-Case-Huelle' : 'Aktiver Lastfall') : '-'],
+        ['Bemessungsmodus', calc?.engineeringMetrics ? (calc.engineeringMetrics.designMode === 'worst-case' ? 'Worst-Case-Huelle' : 'Aktiver Lastfall') : '-'],
         ['Festigkeitsklasse', `${project.cableConfig.minBreakingStrengthNPerMm2} N/mm^2`],
         ['Material', this.getCableMaterialText(project)],
         ['E-Modul', `${project.cableConfig.elasticModulusKNPerMm2.toFixed(1)} kN/mm^2`],
@@ -1088,7 +1130,7 @@ export class PdfExportService {
     const clearanceState =
       minClearance >= project.cableConfig.minGroundClearance ? 'eingehalten' : 'unterschritten';
 
-    return `Die aktuelle Vorplanung wurde mit ${this.getMethodText(calc.method)} ausgewertet. Das globale Seilzugmaximum betraegt ${calc.maxTension.toFixed(2)} kN bei einer Seilauslastung von ${calc.cableCapacityCheck.utilizationPercent.toFixed(0)} %. Die minimale Bodenfreiheit wird im ${criticalSpan ? `Spannfeld ${criticalSpan.spanNumber}` : 'massgebenden Spannfeld'} mit ${minClearance.toFixed(2)} m ${clearanceState}.`;
+    return `Die aktuelle Vorplanung wurde mit ${this.getMethodText(calc.method)} ausgewertet. Berechnungsfamilie: ${this.getCalculationModeText(calc.calculationMode)}. Vorgesehene Verwendung: ${this.getIntendedUseText(calc)}. Das globale Seilzugmaximum betraegt ${calc.maxTension.toFixed(2)} kN bei einer Seilauslastung von ${calc.cableCapacityCheck.utilizationPercent.toFixed(0)} %. Die minimale Bodenfreiheit wird im ${criticalSpan ? `Spannfeld ${criticalSpan.spanNumber}` : 'massgebenden Spannfeld'} mit ${minClearance.toFixed(2)} m ${clearanceState}.`;
   }
 
   private getAnchorCards(anchorForces: AnchorForceResult[]): Array<{ title: string; values: Array<[string, string]> }> {
@@ -1098,7 +1140,7 @@ export class PdfExportService {
         ['Fx', `${force.horizontalSigned >= 0 ? '+' : ''}${force.horizontalSigned.toFixed(2)} kN`],
         ['Fy', `${force.verticalSigned >= 0 ? '+' : ''}${force.verticalSigned.toFixed(2)} kN`],
         ['R', `${force.resultant.toFixed(2)} kN`],
-        ['Neigung', `${force.angle.toFixed(1)} deg`],
+        ['Neigung', `${force.angle.toFixed(1)} Grad`],
       ],
     }));
   }
@@ -1222,7 +1264,34 @@ export class PdfExportService {
   }
 
   private getCalculationModeText(mode: Project['calculationMode'] | CalculationResult['calculationMode']): string {
-    return mode === 'engineering' ? 'Engineering' : 'Planning';
+    return mode === 'engineering' ? 'Ingenieurmodus' : 'Planung';
+  }
+
+  private getIntendedUseText(calc: CalculationResult): string {
+    if (calc.calculationMode === 'engineering') {
+      return 'technische Reviews, Variantendiskussionen und strengere Vordimensionierung';
+    }
+
+    return 'schnelle Trassenbewertung, Machbarkeitspruefungen und fruehe Planungsentscheidungen';
+  }
+
+  private getAssumptionsSummary(calc: CalculationResult): string {
+    return calc.modelAssumptions.join(' | ');
+  }
+
+  private getOperationalRangeText(project: Project): string {
+    return `${project.operationalEnvelope.activeMonitoredRangeStartStation.toFixed(1)} m bis ${project.operationalEnvelope.activeMonitoredRangeEndStation.toFixed(1)} m`;
+  }
+
+  private getTraversabilityText(project: Project): string {
+    const traversability = deriveEdgeSupportTraversability(
+      project.operationalEnvelope,
+      project.supports,
+      project.startStation.stationLength,
+      project.endStation.stationLength
+    );
+
+    return `erste Randstuetze ${traversability.firstSupportTraversable ? 'ueberfahrbar' : 'nicht ueberfahrbar'}, letzte Randstuetze ${traversability.lastSupportTraversable ? 'ueberfahrbar' : 'nicht ueberfahrbar'}`;
   }
 
   private getCableTypeText(project: Project): string {

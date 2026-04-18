@@ -6,6 +6,7 @@ import {
   TerrainSegment,
   Support,
   EndStation,
+  CableParameterSet,
   CableConfiguration,
   CalculationOverrides,
   CalculationResult,
@@ -14,10 +15,13 @@ import {
   EngineeringDesignMode,
   EngineeringSolverType,
   PlanningSolverType,
-  SolverType
+  SolverType,
+  OperationalEnvelope
 } from '../../models';
 import { IndexedDbService } from '../storage/indexed-db.service';
 import { calculateBearing, calculateDestination, hasGeoPoint } from '../geo/route-geometry';
+import { CablePresetService } from '../presets/cable-preset.service';
+import { normalizeOperationalEnvelope } from '../operations/operational-envelope';
 
 /**
  * Project State Service
@@ -47,6 +51,7 @@ export class ProjectStateService {
   readonly calculationOverrides$ = this.calculationOverridesSubject.asObservable();
   readonly selectedPresetId$ = this.selectedPresetIdSubject.asObservable();
   readonly isDirty$ = this.isDirtySubject.asObservable();
+  readonly presetModified$: Observable<boolean>;
   readonly effectiveProject$ = combineLatest([
     this.currentProjectSubject,
     this.calculationOverridesSubject
@@ -61,17 +66,6 @@ export class ProjectStateService {
 
   readonly hasWarnings$ = this.calculationResultSubject.pipe(
     map(result => (result?.warnings?.length ?? 0) > 0)
-  );
-
-  readonly presetModified$ = combineLatest([
-    this.currentProjectSubject,
-    this.selectedPresetIdSubject
-  ]).pipe(
-    map(([project, presetId]) => {
-      if (!project || !presetId) return false;
-      // TODO: Implement comparison logic
-      return false;
-    })
   );
 
   // Getters for current values
@@ -98,7 +92,24 @@ export class ProjectStateService {
     return this.terrainSegmentsSubject.value;
   }
 
-  constructor(private indexedDbService: IndexedDbService) {
+  constructor(
+    private indexedDbService: IndexedDbService,
+    private cablePresetService: CablePresetService
+  ) {
+    this.presetModified$ = combineLatest([
+      this.currentProjectSubject,
+      this.selectedPresetIdSubject,
+      this.cablePresetService.presets$
+    ]).pipe(
+      map(([project, presetId, presets]) => {
+        if (!project || !presetId) return false;
+        const preset = presets.find((item) => item.id === presetId);
+        if (!preset) return false;
+
+        return this.cablePresetService.compareCableWithPreset(project.cableConfig, preset).isModified;
+      })
+    );
+
     // Auto-save on changes (debounced 2 seconds)
     combineLatest([
       this.currentProjectSubject,
@@ -143,14 +154,22 @@ export class ProjectStateService {
         stationLength: 0,
         terrainHeight: 0,
         anchorPoint: { heightAboveTerrain: 0 },
-        groundClearance: 2
+        groundClearance: 2,
+        identifier: 'Startstation',
+        derivationMode: 'auto'
       },
       endStation: {
         type: 'end',
         stationLength: 0,
         terrainHeight: 0,
         anchorPoint: { heightAboveTerrain: 0 },
-        groundClearance: 2
+        groundClearance: 2,
+        identifier: 'Endstation',
+        derivationMode: 'auto'
+      },
+      operationalEnvelope: {
+        activeMonitoredRangeStartStation: 0,
+        activeMonitoredRangeEndStation: 0
       },
       cableConfig: {
         cableType: 'carrying',
@@ -173,6 +192,7 @@ export class ProjectStateService {
     this.supportsSubject.next([]);
     this.calculationResultSubject.next(null);
     this.calculationOverridesSubject.next({});
+    this.selectedPresetIdSubject.next(null);
     this.isDirtySubject.next(true);
 
     return newProject;
@@ -239,8 +259,11 @@ export class ProjectStateService {
           segments: updatedSegments,
           totalLength: this.calculateTotalLength(updatedSegments),
           elevationChange: this.calculateElevationChange(updatedSegments)
-        }
+        },
+        startStation: this.deriveStationFromTerrain(project.startStation, updatedSegments),
+        endStation: this.deriveStationFromTerrain(project.endStation, updatedSegments)
       };
+      updatedProject.operationalEnvelope = this.normalizeOperationalEnvelopeForProject(updatedProject);
       this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
@@ -436,6 +459,14 @@ export class ProjectStateService {
     }
   }
 
+  clearSelectedPresetReference(presetId?: string | null): void {
+    if (presetId && this.selectedPresetIdSubject.value !== presetId) {
+      return;
+    }
+
+    this.setSelectedPresetId(null);
+  }
+
   /**
    * Update project metadata
    */
@@ -449,6 +480,25 @@ export class ProjectStateService {
       this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
+  }
+
+  updateOperationalEnvelope(updates: Partial<OperationalEnvelope>): void {
+    const project = this.currentProjectSubject.value;
+    if (!project) return;
+
+    const updatedProject: Project = {
+      ...project,
+      operationalEnvelope: this.normalizeOperationalEnvelopeForProject({
+        ...project,
+        operationalEnvelope: {
+          ...project.operationalEnvelope,
+          ...updates
+        }
+      })
+    };
+
+    this.currentProjectSubject.next(updatedProject);
+    this.isDirtySubject.next(true);
   }
 
   updateRouteGeometry(startPoint: GeoPoint | null, endPoint: GeoPoint | null): void {
@@ -518,22 +568,64 @@ export class ProjectStateService {
     this.updateRouteGeometry(project.startPoint, endPoint);
   }
 
-  /**
-   * Update end station data
-   */
+  updateStartStation(updates: Partial<EndStation>): void {
+    this.updateStation('start', updates);
+  }
+
   updateEndStation(updates: Partial<EndStation>): void {
+    this.updateStation('end', updates);
+  }
+
+  updateStation(type: 'start' | 'end', updates: Partial<EndStation>): void {
     const project = this.currentProjectSubject.value;
     if (project) {
+      const station = type === 'start' ? project.startStation : project.endStation;
       const updatedProject: Project = {
         ...project,
-        endStation: {
-          ...project.endStation,
-          ...updates
-        }
+        startStation:
+          type === 'start'
+            ? {
+                ...station,
+                ...updates
+              }
+            : project.startStation,
+        endStation:
+          type === 'end'
+            ? {
+                ...station,
+                ...updates
+              }
+            : project.endStation
       };
+      updatedProject.operationalEnvelope = this.normalizeOperationalEnvelopeForProject(updatedProject);
       this.currentProjectSubject.next(updatedProject);
       this.isDirtySubject.next(true);
     }
+  }
+
+  synchronizeStationsFromTerrain(): void {
+    const project = this.currentProjectSubject.value;
+    if (!project) return;
+
+    const nextStartStation = this.deriveStationFromTerrain(project.startStation, project.terrainProfile.segments);
+    const nextEndStation = this.deriveStationFromTerrain(project.endStation, project.terrainProfile.segments);
+
+    if (
+      JSON.stringify(project.startStation) === JSON.stringify(nextStartStation) &&
+      JSON.stringify(project.endStation) === JSON.stringify(nextEndStation)
+    ) {
+      return;
+    }
+
+    const updatedProject: Project = {
+      ...project,
+      startStation: nextStartStation,
+      endStation: nextEndStation
+    };
+    updatedProject.operationalEnvelope = this.normalizeOperationalEnvelopeForProject(updatedProject);
+
+    this.currentProjectSubject.next(updatedProject);
+    this.isDirtySubject.next(true);
   }
 
   /**
@@ -576,6 +668,13 @@ export class ProjectStateService {
       startPoint: normalizedStartPoint,
       endPoint: normalizedEndPoint,
       azimuth: normalizedAzimuth,
+      startStation: this.normalizeStation(project.startStation, 'start', project.terrainProfile.segments),
+      endStation: this.normalizeStation(project.endStation, 'end', project.terrainProfile.segments),
+      operationalEnvelope: normalizeOperationalEnvelope(
+        project.operationalEnvelope,
+        this.normalizeStation(project.startStation, 'start', project.terrainProfile.segments).stationLength,
+        this.normalizeStation(project.endStation, 'end', project.terrainProfile.segments).stationLength
+      ),
       cableConfig: {
         ...project.cableConfig,
         loadPositionRatio: this.normalizeLoadPositionRatio(project.cableConfig.loadPositionRatio),
@@ -591,6 +690,12 @@ export class ProjectStateService {
 
     const endPointChanged =
       (project.endPoint ?? null) !== normalizedEndPoint;
+    const startStationChanged =
+      JSON.stringify(project.startStation) !== JSON.stringify(normalizedProject.startStation);
+    const endStationChanged =
+      JSON.stringify(project.endStation) !== JSON.stringify(normalizedProject.endStation);
+    const operationalEnvelopeChanged =
+      JSON.stringify((project as Partial<Project>).operationalEnvelope ?? null) !== JSON.stringify(normalizedProject.operationalEnvelope);
     const cableConfigNormalized =
       project.cableConfig.loadPositionRatio !== normalizedProject.cableConfig.loadPositionRatio ||
       project.cableConfig.elasticModulusKNPerMm2 !== normalizedProject.cableConfig.elasticModulusKNPerMm2 ||
@@ -604,6 +709,9 @@ export class ProjectStateService {
     if (
       !routeBackfilled &&
       !endPointChanged &&
+      !startStationChanged &&
+      !endStationChanged &&
+      !operationalEnvelopeChanged &&
       project.azimuth === normalizedAzimuth &&
       !cableConfigNormalized &&
       !calculationModeChanged &&
@@ -704,5 +812,53 @@ export class ProjectStateService {
     }
 
     return this.defaultPlanningSolver;
+  }
+
+  private normalizeStation(
+    station: EndStation,
+    type: 'start' | 'end',
+    segments: TerrainSegment[]
+  ): EndStation {
+    const normalizedStation: EndStation = {
+      ...station,
+      identifier: station.identifier ?? (type === 'start' ? 'Startstation' : 'Endstation'),
+      derivationMode: station.derivationMode ?? 'auto'
+    };
+
+    return this.deriveStationFromTerrain(normalizedStation, segments);
+  }
+
+  private deriveStationFromTerrain(station: EndStation, segments: TerrainSegment[]): EndStation {
+    if ((station.derivationMode ?? 'auto') !== 'auto') {
+      return station;
+    }
+
+    if (station.type === 'start') {
+      return {
+        ...station,
+        stationLength: 0,
+        terrainHeight: this.getTerrainStartHeight(segments)
+      };
+    }
+
+    return {
+      ...station,
+      stationLength: this.calculateTotalLength(segments),
+      terrainHeight: segments.length > 0 ? segments[segments.length - 1].terrainHeight : station.terrainHeight
+    };
+  }
+
+  private getTerrainStartHeight(segments: TerrainSegment[]): number {
+    if (segments.length === 0) return 0;
+    const first = segments[0];
+    return first.terrainHeight - (first.slopePercent / 100) * first.lengthMeters;
+  }
+
+  private normalizeOperationalEnvelopeForProject(project: Project): OperationalEnvelope {
+    return normalizeOperationalEnvelope(
+      project.operationalEnvelope,
+      project.startStation.stationLength,
+      project.endStation.stationLength
+    );
   }
 }

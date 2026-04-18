@@ -1,0 +1,110 @@
+.operational-envelope-container {
+  display: grid;
+  gap: 1rem;
+}
+
+.operational-envelope-intro,
+.operational-card,
+.validation-box {
+  padding: 1rem;
+  border: 1px solid #d7e0e8;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.operational-envelope-intro {
+  background: #f6fafc;
+}
+
+.operational-envelope-intro h3,
+.operational-card h4 {
+  margin: 0;
+}
+
+.operational-envelope-intro p,
+.info-text {
+  margin: 0.35rem 0 0;
+  color: #4d6475;
+}
+
+.operational-envelope-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.operational-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.checkbox-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.checkbox-group label {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  font-weight: 600;
+  color: #243746;
+}
+
+.input-group {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.input-group label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #243746;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #c9d6df;
+  border-radius: 10px;
+  background: #fff;
+  color: #18242d;
+  font: inherit;
+}
+
+.range-summary {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.8rem;
+  border-radius: 10px;
+  background: #f7faf7;
+  border: 1px solid #d7ead7;
+}
+
+.range-summary div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.range-summary span {
+  color: #4d6475;
+}
+
+.range-summary strong {
+  color: #1f3e28;
+}
+
+.validation-box {
+  background: #fff7e7;
+  border-color: #e8c27a;
+  color: #7a5300;
+}
+
+.validation-box p {
+  margin: 0;
+}
+
+.validation-box p + p {
+  margin-top: 0.35rem;
+}
