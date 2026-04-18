@@ -3,8 +3,13 @@
  */
 export interface CalculationResult {
   timestamp: Date;
+  calculationMode: CalculationMode;
+  solverFamily: CalculationMode;
   method: SolverType;
+  modelAssumptions: string[];
   designCheck?: WorstCaseDesignCheck;
+  activeLoadCase?: ActiveLoadCase;
+  engineeringMetrics?: EngineeringGlobalMetrics;
 
   cableLine: CablePoint[];               // Cable geometry points
   spans: SpanResult[];
@@ -27,10 +32,42 @@ export interface CalculationResult {
  * Worst-case design metadata
  */
 export interface WorstCaseDesignCheck {
-  source: 'worst-case-payload';
+  source: 'worst-case-payload' | 'selected-payload';
   governingLoadPositionM: number;
   governingSpanNumber: number;
   governingSpanLoadRatio: number;
+}
+
+export interface ActiveLoadCase {
+  horizontalTensionKN: number;
+  maxLoadKg: number;
+  loadPositionRatio: number;
+  hasOverrides: boolean;
+}
+
+export interface EngineeringGlobalMetrics {
+  designMode: EngineeringDesignMode;
+  solvedHorizontalForceKN: number;
+  referenceUnstretchedLengthM: number;
+  loadedUnstretchedLengthM: number;
+  loadedStretchedLengthM: number;
+  spanExtensions: EngineeringSpanExtension[];
+  envelope?: EngineeringEnvelopeSummary;
+}
+
+export interface EngineeringSpanExtension {
+  spanNumber: number;
+  stretchedLengthM: number;
+  unstretchedLengthM: number;
+  extensionM: number;
+  averageTensionKN: number;
+}
+
+export interface EngineeringEnvelopeSummary {
+  cableLine: CablePoint[];
+  minClearanceM: number;
+  minClearanceAtM: number;
+  sampledLoadCases: number;
 }
 
 /**
@@ -56,7 +93,11 @@ export type CableCapacityStatus = 'ok' | 'warning' | 'fail';
 /**
  * Solver Type
  */
-export type SolverType = 'parabolic' | 'catenary' | 'catenary-piecewise';
+export type CalculationMode = 'planning' | 'engineering';
+export type EngineeringDesignMode = 'selected' | 'worst-case';
+export type PlanningSolverType = 'parabolic' | 'catenary' | 'catenary-piecewise';
+export type EngineeringSolverType = 'global-elastic-catenary';
+export type SolverType = PlanningSolverType | EngineeringSolverType;
 
 /**
  * Force Result Vector (kN)

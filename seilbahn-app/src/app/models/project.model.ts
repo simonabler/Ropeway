@@ -3,7 +3,7 @@ import { TerrainProfile } from './terrain.model';
 import { Support } from './support.model';
 import { EndStation } from './end-station.model';
 import { CableConfiguration } from './cable.model';
-import { CalculationResult, SolverType } from './calculation.model';
+import { CalculationMode, CalculationResult, EngineeringDesignMode, SolverType } from './calculation.model';
 
 /**
  * Main Project Model
@@ -34,6 +34,8 @@ export interface Project {
   endStation: EndStation;
   cableConfig: CableConfiguration;
   cablePresetId?: string;                // M4.5: Reference to preset
+  calculationMode?: CalculationMode;     // planning vs engineering
+  engineeringDesignMode?: EngineeringDesignMode;
   solverType?: SolverType;               // Calculation solver
 
   // Calculation result

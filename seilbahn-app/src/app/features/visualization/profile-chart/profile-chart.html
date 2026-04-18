@@ -27,7 +27,11 @@
     <div class="simulation-controls">
       <div class="control-header">
         <h4>Seilsimulation</h4>
-        <span class="control-hint">Interaktive Simulation, getrennt vom konservativen Bemessungsnachweis</span>
+        <span class="control-hint">Die Regler steuern den aktiven Berechnungslastfall für Diagramm und Nachweis.</span>
+        <button class="btn-reset-zoom" type="button" (click)="resetCalculationControls()">
+          <span class="icon">&#x21BA;</span>
+          <span class="label">Werte zurücksetzen</span>
+        </button>
       </div>
 
       <div class="controls-grid">
@@ -121,9 +125,19 @@
 
       @if (calculation?.designCheck; as designCheck) {
         <div class="design-simulation-note">
-          Das Berechnungspanel verwendet die ungünstigste Punktlastposition bei
-          {{ designCheck.governingLoadPositionM.toFixed(1) }} m.
-          Die Werte in dieser Simulation sind interaktive What-if-Ergebnisse.
+          @if (calculation?.calculationMode === 'engineering' && calculation?.engineeringMetrics?.designMode === 'worst-case') {
+            Engineering-Worst-Case bei {{ designCheck.governingLoadPositionM.toFixed(1) }} m.
+          } @else {
+            Aktiver Lastfall bei {{ designCheck.governingLoadPositionM.toFixed(1) }} m.
+          }
+          @if (calculation?.activeLoadCase?.hasOverrides) {
+            Diese Berechnung verwendet temporäre Slider-Werte.
+          } @else {
+            Diese Berechnung verwendet die gespeicherten Projektparameter.
+          }
+          @if (calculation?.calculationMode === 'engineering') {
+            Die Profilansicht nutzt im Engineering-Modus die Solver-Geometrie.
+          }
         </div>
       }
 
@@ -249,7 +263,13 @@
       </div>
       <div class="legend-item">
         <span class="legend-color cable"></span>
-        <span class="legend-label">Maximale Punktlast (Hüllkurve)</span>
+        <span class="legend-label">
+          @if (calculation?.calculationMode === 'engineering' && calculation?.engineeringMetrics?.envelope) {
+            Worst-Case-Huellkurve
+          } @else {
+            Maximale Punktlast (Hüllkurve)
+          }
+        </span>
       </div>
       @if (showEmptyCable()) {
         <div class="legend-item">
@@ -260,7 +280,13 @@
       @if (showLoadedCable()) {
         <div class="legend-item">
           <span class="legend-color loaded-cable"></span>
-          <span class="legend-label">Mit Last</span>
+          <span class="legend-label">
+            @if (calculation?.calculationMode === 'engineering') {
+              Solver-Lastfall
+            } @else {
+              Mit Last
+            }
+          </span>
         </div>
       }
       <div class="legend-item">

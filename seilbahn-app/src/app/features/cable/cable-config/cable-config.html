@@ -179,6 +179,49 @@
         </div>
       </div>
 
+      <div class="current-config">
+        <div class="config-header">
+          <h3>Engineering / Expertenparameter</h3>
+          <span class="preset-tag">{{ project?.calculationMode === 'engineering' ? 'Aktiv im Engineering-Modus' : 'Fuer Engineering relevant' }}</span>
+        </div>
+
+        <div class="input-group">
+          <label>E-Modul [kN/mm^2]</label>
+          <div class="numeric-input">
+            <button class="btn-adjust" (click)="elasticModulusKNPerMm2 = Math.max(10, elasticModulusKNPerMm2 - 5); onValueChange()">-5</button>
+            <input
+              type="number"
+              [(ngModel)]="elasticModulusKNPerMm2"
+              (ngModelChange)="onValueChange()"
+              inputmode="decimal"
+              min="10"
+              max="400"
+              step="1"
+            />
+            <button class="btn-adjust" (click)="elasticModulusKNPerMm2 = Math.min(400, elasticModulusKNPerMm2 + 5); onValueChange()">+5</button>
+          </div>
+          <span class="hint">Default: 100 kN/mm^2. Im Planning-Modus nur dokumentiert, im Engineering-Modus aktiv verwendet.</span>
+        </div>
+
+        <div class="input-group">
+          <label>Fuellfaktor [-]</label>
+          <div class="numeric-input">
+            <button class="btn-adjust" (click)="fillFactor = Math.max(0.2, +(fillFactor - 0.05).toFixed(2)); onValueChange()">-0.05</button>
+            <input
+              type="number"
+              [(ngModel)]="fillFactor"
+              (ngModelChange)="onValueChange()"
+              inputmode="decimal"
+              min="0.2"
+              max="1"
+              step="0.01"
+            />
+            <button class="btn-adjust" (click)="fillFactor = Math.min(1, +(fillFactor + 0.05).toFixed(2)); onValueChange()">+0.05</button>
+          </div>
+          <span class="hint">Default: 0.70. Wird fuer die wirksame metallische Querschnittsflaeche verwendet.</span>
+        </div>
+      </div>
+
       <!-- Cable Weight -->
       <div class="input-group">
         <label>Seilgewicht [N/m]</label>

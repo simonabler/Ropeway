@@ -1,15 +1,19 @@
-import { Component, signal, effect } from '@angular/core';
+import { Component, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { CalculationResult, CalculationWarning, SpanResult, SolverType } from '../../../models';
+import {
+  CalculationMode,
+  CalculationResult,
+  CalculationWarning,
+  EngineeringDesignMode,
+  EngineeringSpanExtension,
+  SpanResult,
+  SolverType
+} from '../../../models';
 import { ProjectStateService } from '../../../services/state/project-state.service';
 import { CableCalculatorService } from '../../../services/calculation/cable-calculator.service';
 
-/**
- * Calculation Results Component
- * Shows calculation trigger and results display
- */
 @Component({
   selector: 'app-calculation-results',
   imports: [CommonModule, FormsModule],
@@ -18,16 +22,14 @@ import { CableCalculatorService } from '../../../services/calculation/cable-calc
   standalone: true
 })
 export class CalculationResults {
-  // Expose Math for template
   Math = Math;
 
-  // State
   private _project;
+  private _effectiveProject;
   private _terrain;
   private _supports;
   private _calculationResult;
 
-  // UI State
   isCalculating = signal(false);
   lastCalculation = signal<Date | null>(null);
 
@@ -39,16 +41,17 @@ export class CalculationResults {
     private cableCalculatorService: CableCalculatorService
   ) {
     this._project = toSignal(this.projectStateService.project$, { initialValue: null });
+    this._effectiveProject = toSignal(this.projectStateService.effectiveProject$, { initialValue: null });
     this._terrain = toSignal(this.projectStateService.terrain$, { initialValue: [] });
     this._supports = toSignal(this.projectStateService.supports$, { initialValue: [] });
     this._calculationResult = toSignal(this.projectStateService.calculation$, { initialValue: null });
 
     effect(() => {
-      const project = this._project();
+      const project = this._effectiveProject();
       const terrain = this._terrain();
       const supports = this._supports();
 
-      if (!project || terrain.length === 0) return;
+      if (!project || terrain.length === 0 || supports.length === 0) return;
 
       const key = this.buildAutoCalcKey(project, terrain, supports);
       if (key === this.lastAutoCalcKey) return;
@@ -60,6 +63,10 @@ export class CalculationResults {
 
   get project() {
     return this._project();
+  }
+
+  get effectiveProject() {
+    return this._effectiveProject();
   }
 
   get terrain() {
@@ -78,41 +85,58 @@ export class CalculationResults {
     return this.project?.solverType ?? 'parabolic';
   }
 
+  get calculationMode(): CalculationMode {
+    return this.project?.calculationMode ?? 'planning';
+  }
+
+  get availableSolvers(): Array<{ value: SolverType; label: string }> {
+    if (this.calculationMode === 'engineering') {
+      return [
+        { value: 'global-elastic-catenary', label: 'Global elastische Kettenlinie' }
+      ];
+    }
+
+    return [
+      { value: 'parabolic', label: 'Parabel (schnell)' },
+      { value: 'catenary', label: 'Kettenlinie (genauer)' },
+      { value: 'catenary-piecewise', label: 'Kettenlinie stückweise (mit Punktlast)' }
+    ];
+  }
+
+  onCalculationModeChange(value: string): void {
+    this.projectStateService.updateCalculationMode(value as CalculationMode);
+  }
+
   onSolverChange(value: string): void {
-    const solver = value as SolverType;
-    this.projectStateService.updateSolverType(solver);
+    this.projectStateService.updateSolverType(value as SolverType);
   }
 
-  /**
-   * Check if calculation is possible
-   */
+  onEngineeringDesignModeChange(value: string): void {
+    this.projectStateService.updateEngineeringDesignMode(value as EngineeringDesignMode);
+  }
+
   canCalculate(): boolean {
-    return this.terrain.length > 0;
+    return this.terrain.length > 0 && this.supports.length > 0;
   }
 
-  /**
-   * Get reason why calculation is not possible
-   */
   getCannotCalculateReason(): string {
     if (this.terrain.length === 0) {
       return 'Bitte zuerst das Geländeprofil erfassen';
     }
+    if (this.supports.length === 0) {
+      return 'Bitte mindestens eine Stütze setzen';
+    }
     return '';
   }
 
-  /**
-   * Run calculation
-   */
   calculate() {
-    const project = this.project;
+    const project = this.effectiveProject ?? this.project;
     if (!project) return;
 
     this.isCalculating.set(true);
 
-    // Small delay for UI feedback
     setTimeout(() => {
       try {
-        // Update end station based on terrain
         const totalLength = this.terrain.length > 0
           ? this.terrain[this.terrain.length - 1].stationLength
           : 0;
@@ -120,7 +144,6 @@ export class CalculationResults {
           ? this.terrain[this.terrain.length - 1].terrainHeight
           : 0;
 
-        // Keep end station persisted in project state
         if (
           project.endStation.stationLength !== totalLength ||
           project.endStation.terrainHeight !== endHeight
@@ -131,16 +154,18 @@ export class CalculationResults {
           });
         }
 
-        const projectForCalculation = this.projectStateService.currentProject ?? project;
+        const projectForCalculation = this.projectStateService.currentEffectiveProject ?? project;
         const result = this.cableCalculatorService.calculateCable(projectForCalculation);
         this.projectStateService.setCalculationResult(result);
         this.lastCalculation.set(new Date());
       } catch (error) {
         console.error('Calculation error:', error);
-        // Create error result
         const errorResult: CalculationResult = {
           timestamp: new Date(),
+          calculationMode: project.calculationMode ?? 'planning',
+          solverFamily: project.calculationMode ?? 'planning',
           method: project.solverType ?? 'parabolic',
+          modelAssumptions: [],
           cableLine: [],
           spans: [],
           maxTension: 0,
@@ -170,30 +195,18 @@ export class CalculationResults {
     }, 300);
   }
 
-  /**
-   * Get errors from result
-   */
   getErrors(): CalculationWarning[] {
     return this.result?.warnings.filter(w => w.severity === 'error') || [];
   }
 
-  /**
-   * Get warnings from result
-   */
   getWarnings(): CalculationWarning[] {
     return this.result?.warnings.filter(w => w.severity === 'warning') || [];
   }
 
-  /**
-   * Get info messages from result
-   */
   getInfos(): CalculationWarning[] {
     return this.result?.warnings.filter(w => w.severity === 'info') || [];
   }
 
-  /**
-   * Get span with minimum clearance
-   */
   getCriticalSpan(): SpanResult | null {
     if (!this.result || this.result.spans.length === 0) return null;
     return this.result.spans.reduce((min, span) =>
@@ -230,32 +243,62 @@ export class CalculationResults {
     const cableKey = [
       cable.cableWeightPerMeter,
       cable.maxLoad,
+      cable.loadPositionRatio,
       cable.safetyFactor,
       cable.minGroundClearance,
       cable.horizontalTensionKN,
+      cable.elasticModulusKNPerMm2,
+      cable.fillFactor,
       cable.cableDiameterMm,
       cable.minBreakingStrengthNPerMm2,
       cable.cableMaterial,
+      project.calculationMode || 'planning',
+      project.engineeringDesignMode || 'selected',
       project.solverType || 'parabolic'
     ].join('|');
     return `${terrainKey}__${supportsKey}__${cableKey}`;
   }
 
-  /**
-   * Format time
-   */
   formatTime(date: Date): string {
     return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   }
 
   get requiredClearance(): number {
-    return this.project?.cableConfig?.minGroundClearance ?? 2;
+    return this.effectiveProject?.cableConfig?.minGroundClearance ?? this.project?.cableConfig?.minGroundClearance ?? 2;
   }
 
   get designCheckLabel(): string | null {
     const designCheck = this.result?.designCheck;
     if (!designCheck) return null;
 
-    return `Ungünstigste Punktlast bei ${designCheck.governingLoadPositionM.toFixed(1)} m in Spannfeld ${designCheck.governingSpanNumber}`;
+    if (designCheck.source === 'selected-payload') {
+      return `Aktive Punktlast bei ${designCheck.governingLoadPositionM.toFixed(1)} m in Spannfeld ${designCheck.governingSpanNumber}`;
+    }
+
+    return `Unguenstigste Punktlast bei ${designCheck.governingLoadPositionM.toFixed(1)} m in Spannfeld ${designCheck.governingSpanNumber}`;
+  }
+
+  get engineeringDesignMode(): EngineeringDesignMode {
+    return this.project?.engineeringDesignMode ?? 'selected';
+  }
+
+  get engineeringSpanExtensions(): EngineeringSpanExtension[] {
+    return this.result?.engineeringMetrics?.spanExtensions ?? [];
+  }
+
+  get engineeringHasEnvelope(): boolean {
+    return !!this.result?.engineeringMetrics?.envelope;
+  }
+
+  get engineeringDesignLabel(): string {
+    return this.engineeringDesignMode === 'worst-case' ? 'Worst-Case-Huellkurve' : 'Aktiver Lastfall';
+  }
+
+  get modeDescription(): string {
+    if (this.calculationMode === 'engineering') {
+      return 'Engineering result: global elastic multi-span analysis with shared H solution';
+    }
+
+    return 'Planning result: simplified pretension-based approximation';
   }
 }

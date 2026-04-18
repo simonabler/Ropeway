@@ -116,6 +116,7 @@ describe('ProjectStateService', () => {
       status: 'draft',
       startPoint: { lat: 47, lng: 11 },
       azimuth: 90,
+      calculationMode: 'planning',
       terrainProfile: {
         segments: [],
         recordingMethod: 'manual',
@@ -141,12 +142,15 @@ describe('ProjectStateService', () => {
         cableType: 'carrying',
         cableWeightPerMeter: 5,
         maxLoad: 500,
+        loadPositionRatio: 0.5,
         safetyFactor: 5,
         minGroundClearance: 2,
         horizontalTensionKN: 15,
         cableDiameterMm: 16,
         minBreakingStrengthNPerMm2: 1960,
-        cableMaterial: 'steel'
+        cableMaterial: 'steel',
+        elasticModulusKNPerMm2: 100,
+        fillFactor: 0.7
       },
       endPoint: null
     };
@@ -212,5 +216,115 @@ describe('ProjectStateService', () => {
     expect(service.currentProject?.startPoint).toEqual({ lat: 0, lng: 0 });
     expect(service.currentProject?.endPoint).toBeNull();
     expect(service.currentProject?.azimuth).toBe(0);
+  });
+
+  it('loads legacy projects without loadPositionRatio with a default of 0.5', async () => {
+    const indexedDbMock = createIndexedDbMock();
+    const { service } = createService(indexedDbMock);
+
+    const legacyProject = service.createNewProject('legacy');
+    const legacyCableConfig = { ...legacyProject.cableConfig } as Partial<Project['cableConfig']>;
+    delete legacyCableConfig.loadPositionRatio;
+    indexedDbMock.loadProject.mockResolvedValue({
+      ...legacyProject,
+      cableConfig: legacyCableConfig
+    });
+
+    await service.loadProject('legacy');
+
+    expect(service.currentProject?.cableConfig.loadPositionRatio).toBe(0.5);
+  });
+
+  it('loads legacy projects without engineering rope parameters with defaults', async () => {
+    const indexedDbMock = createIndexedDbMock();
+    const { service } = createService(indexedDbMock);
+
+    const legacyProject = service.createNewProject('legacy');
+    const legacyCableConfig = { ...legacyProject.cableConfig } as Partial<Project['cableConfig']>;
+    delete legacyCableConfig.elasticModulusKNPerMm2;
+    delete legacyCableConfig.fillFactor;
+    indexedDbMock.loadProject.mockResolvedValue({
+      ...legacyProject,
+      cableConfig: legacyCableConfig
+    });
+
+    await service.loadProject('legacy');
+
+    expect(service.currentProject?.cableConfig.elasticModulusKNPerMm2).toBe(100);
+    expect(service.currentProject?.cableConfig.fillFactor).toBe(0.7);
+  });
+
+  it('defaults legacy projects without calculationMode to planning', async () => {
+    const indexedDbMock = createIndexedDbMock();
+    const { service } = createService(indexedDbMock);
+
+    const legacyProject = service.createNewProject('legacy');
+    delete (legacyProject as Partial<Project>).calculationMode;
+    indexedDbMock.loadProject.mockResolvedValue(legacyProject);
+
+    await service.loadProject('legacy');
+
+    expect(service.currentProject?.calculationMode).toBe('planning');
+    expect(service.currentProject?.solverType).toBe('parabolic');
+  });
+
+  it('defaults legacy projects without engineeringDesignMode to selected', async () => {
+    const indexedDbMock = createIndexedDbMock();
+    const { service } = createService(indexedDbMock);
+
+    const legacyProject = service.createNewProject('legacy');
+    delete (legacyProject as Partial<Project>).engineeringDesignMode;
+    indexedDbMock.loadProject.mockResolvedValue(legacyProject);
+
+    await service.loadProject('legacy');
+
+    expect(service.currentProject?.engineeringDesignMode).toBe('selected');
+  });
+
+  it('builds an effective project from calculation overrides and can reset them', () => {
+    const { service } = createService();
+    service.createNewProject('test');
+
+    service.setCalculationOverride({
+      horizontalTensionKN: 22,
+      maxLoad: 900,
+      loadPositionRatio: 0.25
+    });
+
+    expect(service.currentEffectiveProject?.cableConfig.horizontalTensionKN).toBe(22);
+    expect(service.currentEffectiveProject?.cableConfig.maxLoad).toBe(900);
+    expect(service.currentEffectiveProject?.cableConfig.loadPositionRatio).toBe(0.25);
+    expect(service.hasCalculationOverrides).toBe(true);
+
+    service.clearCalculationOverrides();
+
+    expect(service.currentEffectiveProject?.cableConfig.horizontalTensionKN).toBe(15);
+    expect(service.currentEffectiveProject?.cableConfig.maxLoad).toBe(500);
+    expect(service.currentEffectiveProject?.cableConfig.loadPositionRatio).toBe(0.5);
+    expect(service.hasCalculationOverrides).toBe(false);
+  });
+
+  it('switches to a compatible solver when changing calculation mode', () => {
+    const { service } = createService();
+    service.createNewProject('test');
+
+    service.updateCalculationMode('engineering');
+    expect(service.currentProject?.calculationMode).toBe('engineering');
+    expect(service.currentProject?.solverType).toBe('global-elastic-catenary');
+
+    service.updateCalculationMode('planning');
+    expect(service.currentProject?.calculationMode).toBe('planning');
+    expect(service.currentProject?.solverType).toBe('parabolic');
+  });
+
+  it('updates engineering design mode independently from calculation mode', () => {
+    const { service } = createService();
+    service.createNewProject('test');
+
+    service.updateCalculationMode('engineering');
+    service.updateEngineeringDesignMode('worst-case');
+
+    expect(service.currentProject?.calculationMode).toBe('engineering');
+    expect(service.currentProject?.engineeringDesignMode).toBe('worst-case');
   });
 });

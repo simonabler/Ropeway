@@ -1,14 +1,41 @@
 <div class="calculation-container">
-  <!-- Calculation Trigger -->
   <div class="trigger-section">
+    <div class="solver-select">
+      <label for="calculationMode">Berechnungsmodus</label>
+      <select id="calculationMode" [ngModel]="calculationMode" (ngModelChange)="onCalculationModeChange($event)">
+        <option value="planning">Planning</option>
+        <option value="engineering">Engineering</option>
+      </select>
+    </div>
+
     <div class="solver-select">
       <label for="solverType">Solver</label>
       <select id="solverType" [ngModel]="solverType" (ngModelChange)="onSolverChange($event)">
-        <option value="parabolic">Parabel (schnell)</option>
-        <option value="catenary">Kettenlinie (genauer)</option>
-        <option value="catenary-piecewise">Kettenlinie stückweise (exakt mit Punktlast)</option>
+        @for (solver of availableSolvers; track solver.value) {
+          <option [value]="solver.value">{{ solver.label }}</option>
+        }
       </select>
     </div>
+
+    @if (calculationMode === 'engineering') {
+      <div class="solver-select">
+        <label for="engineeringDesignMode">Engineering-Fall</label>
+        <select
+          id="engineeringDesignMode"
+          [ngModel]="engineeringDesignMode"
+          (ngModelChange)="onEngineeringDesignModeChange($event)"
+        >
+          <option value="selected">Aktiver Lastfall</option>
+          <option value="worst-case">Worst-Case-Huellkurve</option>
+        </select>
+      </div>
+    }
+
+    <div class="design-check-note">
+      <strong>{{ calculationMode === 'engineering' ? 'Engineering' : 'Planning' }}:</strong>
+      {{ modeDescription }}.
+    </div>
+
     @if (!canCalculate()) {
       <div class="cannot-calculate">
         <span class="warning-icon">⚠</span>
@@ -36,10 +63,8 @@
     }
   </div>
 
-  <!-- Results Display -->
   @if (result) {
     <div class="results-section" [class.invalid]="!result.isValid">
-      <!-- Status Header -->
       <div class="status-header" [class.success]="result.isValid" [class.error]="!result.isValid">
         @if (result.isValid) {
           <span class="status-icon">✓</span>
@@ -50,7 +75,6 @@
         }
       </div>
 
-      <!-- Errors -->
       @if (getErrors().length > 0) {
         <div class="message-box error">
           <h4>Fehler</h4>
@@ -60,10 +84,8 @@
         </div>
       }
 
-      <!-- Main Results (only if valid) -->
       @if (result.isValid) {
         <div class="main-results">
-          <!-- Key Values -->
           <div class="result-cards">
             <div class="result-card">
               <span class="result-label">Bemessungs-T_max</span>
@@ -77,16 +99,59 @@
             </div>
           </div>
 
+          <div class="design-check-note">
+            <strong>Modell:</strong> {{ modeDescription }}.
+            <br />
+            <strong>Solver:</strong> {{ solverType }}.
+          </div>
+
           @if (designCheckLabel) {
             <div class="design-check-note">
               <strong>Bemessungsfall:</strong> {{ designCheckLabel }}.
-              Die Seilkapazität wird gegen die ungünstigste Nutzlastposition über das gesamte Seil geprüft.
+              @if (result.designCheck?.source === 'worst-case-payload') {
+                Die Seilkapazität wird gegen den automatisch gescannten Worst-Case geprüft.
+              } @else {
+                Die Seilkapazität wird für den aktuell aktiven Lastfall geprüft.
+              }
+              @if (result.activeLoadCase?.hasOverrides) {
+                Aktive Slider-Overrides sind in dieser Berechnung enthalten.
+              }
               <br />
               <strong>Hinweis:</strong> `H` ist die horizontale Vorspannung. Die Punktlast erhöht die resultierende Seilspannung `T_max` über die vertikale Komponente, nicht direkt `H`.
             </div>
           }
 
-          <!-- Cable Capacity Check (NEW) -->
+          @if (result.modelAssumptions.length > 0) {
+            <div class="design-check-note">
+              <strong>Modellannahmen:</strong>
+              {{ result.modelAssumptions.join(' | ') }}
+            </div>
+          }
+
+          @if (result.engineeringMetrics && calculationMode === 'engineering') {
+            <div class="support-forces">
+              <h4>Globale Engineering-Kennwerte</h4>
+              <div class="force-grid">
+                <div class="force-card">
+                  <div class="force-title">Systemzustand</div>
+                  <div class="force-row"><span class="label">Designfall:</span><span class="value">{{ engineeringDesignLabel }}</span></div>
+                  <div class="force-row"><span class="label">Geloestes H:</span><span class="value">{{ result.engineeringMetrics.solvedHorizontalForceKN.toFixed(2) }} kN</span></div>
+                  <div class="force-row"><span class="label">Referenzlaenge:</span><span class="value">{{ result.engineeringMetrics.referenceUnstretchedLengthM.toFixed(2) }} m</span></div>
+                  <div class="force-row"><span class="label">Belastete Seillaenge:</span><span class="value">{{ result.engineeringMetrics.loadedStretchedLengthM.toFixed(2) }} m</span></div>
+                  <div class="force-row"><span class="label">Belastete Null-Laenge:</span><span class="value">{{ result.engineeringMetrics.loadedUnstretchedLengthM.toFixed(2) }} m</span></div>
+                </div>
+                @if (result.engineeringMetrics.envelope) {
+                  <div class="force-card">
+                    <div class="force-title">Worst-Case-Huelle</div>
+                    <div class="force-row"><span class="label">Abgetastet:</span><span class="value">{{ result.engineeringMetrics.envelope.sampledLoadCases }} Lastfaelle</span></div>
+                    <div class="force-row"><span class="label">Min. Huelle:</span><span class="value">{{ result.engineeringMetrics.envelope.minClearanceM.toFixed(2) }} m</span></div>
+                    <div class="force-row"><span class="label">Bei Station:</span><span class="value">{{ result.engineeringMetrics.envelope.minClearanceAtM.toFixed(1) }} m</span></div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
           @if (result.cableCapacityCheck) {
             <div class="capacity-check"
                  [class.ok]="result.cableCapacityCheck.status === 'ok'"
@@ -104,7 +169,7 @@
                   }
                   @case ('fail') {
                     <span class="status-icon">✕</span>
-                    <span class="status-text">Seil überlastet!</span>
+                    <span class="status-text">Seil überlastet</span>
                   }
                 }
               </div>
@@ -140,7 +205,6 @@
                   </div>
                 }
               </div>
-              <!-- Utilization Bar -->
               <div class="utilization-bar">
                 <div class="bar-fill" [style.width.%]="Math.min(result.cableCapacityCheck.utilizationPercent, 100)"></div>
                 <div class="bar-markers">
@@ -151,7 +215,6 @@
             </div>
           }
 
-          <!-- Anchor Forces -->
           @if (result.anchorForces && result.anchorForces.length > 0) {
             <div class="anchor-forces">
               <h4>Ankerkräfte</h4>
@@ -169,7 +232,6 @@
             </div>
           }
 
-          <!-- Support Forces -->
           @if (result.supportForces && result.supportForces.length > 0) {
             <div class="support-forces">
               <h4>Stützenauflagen</h4>
@@ -187,8 +249,6 @@
             </div>
           }
 
-
-          <!-- Critical Clearance -->
           @if (getCriticalSpan(); as critical) {
             <div class="clearance-info" [class.warning]="critical.minClearance < requiredClearance">
               <h4>Minimale Bodenfreiheit</h4>
@@ -199,7 +259,6 @@
             </div>
           }
 
-          <!-- Span Details -->
           @if (result.spans.length > 0) {
             <div class="spans-section">
               <h4>Spannfelder ({{ result.spans.length }})</h4>
@@ -229,10 +288,39 @@
               </div>
             </div>
           }
+
+          @if (engineeringSpanExtensions.length > 0) {
+            <div class="spans-section">
+              <h4>Dehnung je Spannfeld</h4>
+              <div class="spans-list">
+                @for (extension of engineeringSpanExtensions; track extension.spanNumber) {
+                  <div class="span-card">
+                    <div class="span-header">
+                      <span class="span-number">Spannfeld {{ extension.spanNumber }}</span>
+                      <span class="span-length">{{ extension.extensionM.toFixed(3) }} m</span>
+                    </div>
+                    <div class="span-details">
+                      <div class="detail-row">
+                        <span class="detail-label">Gestreckt:</span>
+                        <span class="detail-value">{{ extension.stretchedLengthM.toFixed(2) }} m</span>
+                      </div>
+                      <div class="detail-row">
+                        <span class="detail-label">Ungelesst:</span>
+                        <span class="detail-value">{{ extension.unstretchedLengthM.toFixed(2) }} m</span>
+                      </div>
+                      <div class="detail-row">
+                        <span class="detail-label">T_mittel:</span>
+                        <span class="detail-value">{{ extension.averageTensionKN.toFixed(2) }} kN</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         </div>
       }
 
-      <!-- Warnings -->
       @if (getWarnings().length > 0) {
         <div class="message-box warning">
           <h4>Warnungen</h4>
@@ -242,7 +330,6 @@
         </div>
       }
 
-      <!-- Info Messages -->
       @if (getInfos().length > 0) {
         <div class="message-box info">
           <h4>Hinweise</h4>
@@ -254,7 +341,6 @@
     </div>
   }
 
-  <!-- No Result Yet -->
   @if (!result && canCalculate()) {
     <div class="no-result">
       <p>Starten Sie die Berechnung, um Ergebnisse zu sehen</p>

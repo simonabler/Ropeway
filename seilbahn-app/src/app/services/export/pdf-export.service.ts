@@ -425,7 +425,7 @@ export class PdfExportService {
           detail: 'globales Maximum',
         },
         {
-          label: 'Horizontalkraft',
+          label: 'Horizontale Vorspannung',
           value: `${calc.maxHorizontalForce.toFixed(2)} kN`,
           detail: 'maximaler Wert',
         },
@@ -449,11 +449,45 @@ export class PdfExportService {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.text(
-        `Worst-case-Payload in Feld ${calc.designCheck.governingSpanNumber}, Position ${calc.designCheck.governingLoadPositionM.toFixed(1)} m (${(calc.designCheck.governingSpanLoadRatio * 100).toFixed(0)} % der Spannfeldlaenge).`,
+        calc.designCheck.source === 'selected-payload'
+          ? `Aktiver Payload in Feld ${calc.designCheck.governingSpanNumber}, Position ${calc.designCheck.governingLoadPositionM.toFixed(1)} m (${(calc.designCheck.governingSpanLoadRatio * 100).toFixed(0)} % der Spannfeldlaenge).`
+          : `Worst-case-Payload in Feld ${calc.designCheck.governingSpanNumber}, Position ${calc.designCheck.governingLoadPositionM.toFixed(1)} m (${(calc.designCheck.governingSpanLoadRatio * 100).toFixed(0)} % der Spannfeldlaenge).`,
         this.margin + 6,
         y + 18
       );
       y += 36;
+    }
+
+    if (calc.engineeringMetrics) {
+      this.drawPanel(doc, this.margin, y, this.contentWidth, 36, 'neutral');
+      this.drawPanelTitle(doc, this.margin + 6, y + 8, 'Globale Engineering-Kennwerte');
+      this.drawKeyValueRows(
+        doc,
+        [
+          ['Designfall', calc.engineeringMetrics.designMode === 'worst-case' ? 'Worst-Case-Huelle' : 'Aktiver Lastfall'],
+          ['Geloestes H', `${calc.engineeringMetrics.solvedHorizontalForceKN.toFixed(2)} kN`],
+          ['Referenzlaenge', `${calc.engineeringMetrics.referenceUnstretchedLengthM.toFixed(2)} m`],
+          ['Belastete Seillaenge', `${calc.engineeringMetrics.loadedStretchedLengthM.toFixed(2)} m`],
+          ['Belastete Null-Laenge', `${calc.engineeringMetrics.loadedUnstretchedLengthM.toFixed(2)} m`],
+        ],
+        this.margin + 6,
+        y + 15,
+        40
+      );
+      if (calc.engineeringMetrics.envelope) {
+        this.drawKeyValueRows(
+          doc,
+          [
+            ['Huelle min. Frei.', `${calc.engineeringMetrics.envelope.minClearanceM.toFixed(2)} m`],
+            ['Huelle bei Stat.', `${calc.engineeringMetrics.envelope.minClearanceAtM.toFixed(1)} m`],
+            ['Load Cases', `${calc.engineeringMetrics.envelope.sampledLoadCases}`]
+          ],
+          this.margin + 104,
+          y + 15,
+          34
+        );
+      }
+      y += 44;
     }
 
     y = this.drawTable(doc, {
@@ -700,14 +734,23 @@ export class PdfExportService {
     );
 
     y += 66;
-    this.drawPanel(doc, this.margin, y, this.contentWidth, 40, calc ? this.getCapacityTone(calc) : 'warning');
+    this.drawPanel(doc, this.margin, y, this.contentWidth, 104, calc ? this.getCapacityTone(calc) : 'warning');
     this.drawPanelTitle(doc, this.margin + 6, y + 8, 'Tragfaehigkeit und Nachweis');
     this.drawKeyValueRows(
       doc,
       [
+        ['Modus', calc ? this.getCalculationModeText(calc.calculationMode) : this.getCalculationModeText(project.calculationMode || 'planning')],
+        ['Engineering-Fall', calc?.engineeringMetrics ? (calc.engineeringMetrics.designMode === 'worst-case' ? 'Worst-Case-Huelle' : 'Aktiver Lastfall') : '-'],
         ['Festigkeitsklasse', `${project.cableConfig.minBreakingStrengthNPerMm2} N/mm^2`],
         ['Material', this.getCableMaterialText(project)],
-        ['Horizontalkraft', `${project.cableConfig.horizontalTensionKN.toFixed(2)} kN`],
+        ['E-Modul', `${project.cableConfig.elasticModulusKNPerMm2.toFixed(1)} kN/mm^2`],
+        ['Fuellfaktor', `${project.cableConfig.fillFactor.toFixed(2)}`],
+        ['Horizontale Vorspannung', `${(calc?.activeLoadCase?.horizontalTensionKN ?? project.cableConfig.horizontalTensionKN).toFixed(2)} kN`],
+        ['Geloestes H', calc?.engineeringMetrics ? `${calc.engineeringMetrics.solvedHorizontalForceKN.toFixed(2)} kN` : '-'],
+        ['Punktlast', `${(calc?.activeLoadCase?.maxLoadKg ?? project.cableConfig.maxLoad).toFixed(0)} kg`],
+        ['Lastposition', `${(((calc?.activeLoadCase?.loadPositionRatio ?? project.cableConfig.loadPositionRatio) ?? 0.5) * 100).toFixed(0)} %`],
+        ['Referenzlaenge', calc?.engineeringMetrics ? `${calc.engineeringMetrics.referenceUnstretchedLengthM.toFixed(2)} m` : '-'],
+        ['Belastete Seillaenge', calc?.engineeringMetrics ? `${calc.engineeringMetrics.loadedStretchedLengthM.toFixed(2)} m` : '-'],
         ['Zulaessig', calc ? `${calc.cableCapacityCheck.maxAllowedTensionKN.toFixed(2)} kN` : '-'],
         ['Tatsaechlich', calc ? `${calc.cableCapacityCheck.actualMaxTensionKN.toFixed(2)} kN` : '-'],
       ],
@@ -717,7 +760,7 @@ export class PdfExportService {
     );
 
     if (project.notes) {
-      y += 48;
+      y += 112;
       this.drawPanel(doc, this.margin, y, this.contentWidth, 34, 'neutral');
       this.drawPanelTitle(doc, this.margin + 6, y + 8, 'Projektanmerkungen');
       this.applyTextColor(doc, this.colors.text);
@@ -1171,9 +1214,15 @@ export class PdfExportService {
         return 'Kettenlinie';
       case 'catenary-piecewise':
         return 'Kettenlinie stueckweise';
+      case 'global-elastic-catenary':
+        return 'Global elastische Mehrfeld-Kettenlinie';
       default:
         return method;
     }
+  }
+
+  private getCalculationModeText(mode: Project['calculationMode'] | CalculationResult['calculationMode']): string {
+    return mode === 'engineering' ? 'Engineering' : 'Planning';
   }
 
   private getCableTypeText(project: Project): string {

@@ -5,6 +5,7 @@ export interface CableConfiguration {
   cableType: 'carrying' | 'combined';    // Future: separate hauling
   cableWeightPerMeter: number;           // kg/m
   maxLoad: number;                       // kg (load per span or total)
+  loadPositionRatio: number;             // 0..1 along full cable alignment
   safetyFactor: number;                  // Default: 5
   minGroundClearance: number;            // meters
   allowedSag?: number;                   // DEPRECATED: derived from H, kept for backward compat
@@ -15,12 +16,23 @@ export interface CableConfiguration {
   minBreakingStrengthNPerMm2: number;    // N/mm^2 (default 1960, editable)
   cableMaterial: CableMaterial;          // steel or synthetic
   cableBreakingStrengthKN?: number;      // kN - optional override for breaking strength
+  elasticModulusKNPerMm2: number;        // kN/mm^2 - engineering mode input
+  fillFactor: number;                    // 0..1 metallic fill factor - engineering mode input
 }
 
 /**
  * Cable Material Types
  */
 export type CableMaterial = 'steel' | 'synthetic';
+
+/**
+ * Session-only calculation overrides from the profile slider panel.
+ */
+export interface CalculationOverrides {
+  horizontalTensionKN?: number;
+  maxLoad?: number;                      // kg
+  loadPositionRatio?: number;            // 0..1 along full cable alignment
+}
 
 /**
  * Standard cable diameters (mm) for dropdown

@@ -24,6 +24,8 @@ import { STANDARD_CABLES } from '../../../services/calculation/engine/physics/ca
   standalone: true
 })
 export class CableConfig {
+  Math = Math;
+
   // Presets from service
   presets;
 
@@ -47,6 +49,8 @@ export class CableConfig {
   cableDiameterMm = 16;       // Seildurchmesser mm
   minBreakingStrengthNPerMm2 = 1960; // Festigkeitsklasse (N/mm^2)
   cableMaterial: CableMaterial = 'steel';  // Material
+  elasticModulusKNPerMm2 = 100;
+  fillFactor = 0.7;
 
   // Standard cables for dropdown
   readonly standardCables = STANDARD_CABLES;
@@ -95,6 +99,8 @@ export class CableConfig {
       this.cableDiameterMm = config.cableDiameterMm || 16;
       this.minBreakingStrengthNPerMm2 = config.minBreakingStrengthNPerMm2 || 1960;
       this.cableMaterial = config.cableMaterial || 'steel';
+      this.elasticModulusKNPerMm2 = config.elasticModulusKNPerMm2 || 100;
+      this.fillFactor = config.fillFactor || 0.7;
     }
 
     // Check if preset was selected
@@ -125,6 +131,8 @@ export class CableConfig {
     this.cableDiameterMm = preset.cable.diameterMm;
     this.minBreakingStrengthNPerMm2 = preset.cable.breakingStrengthNPerMm2 || 1960;
     this.cableMaterial = preset.cable.material;
+    this.elasticModulusKNPerMm2 = this.project?.cableConfig.elasticModulusKNPerMm2 ?? 100;
+    this.fillFactor = this.project?.cableConfig.fillFactor ?? 0.7;
 
     // Save to project
     this.saveConfig();
@@ -225,6 +233,12 @@ export class CableConfig {
     if (this.minBreakingStrengthNPerMm2 < 1000 || this.minBreakingStrengthNPerMm2 > 2200) {
       errs.push('Festigkeitsklasse: 1000-2200 N/mm^2');
     }
+    if (this.elasticModulusKNPerMm2 < 10 || this.elasticModulusKNPerMm2 > 400) {
+      errs.push('E-Modul: 10-400 kN/mm^2');
+    }
+    if (this.fillFactor < 0.2 || this.fillFactor > 1) {
+      errs.push('Füllfaktor: 0.2-1.0');
+    }
 
     this.errors.set(errs);
     return errs.length === 0;
@@ -240,12 +254,15 @@ export class CableConfig {
       cableType: 'carrying',
       cableWeightPerMeter: this.cableWeightNPerM / 9.81, // N/m to kg/m
       maxLoad: this.loadN / 9.81, // N to kg
+      loadPositionRatio: this.project?.cableConfig.loadPositionRatio ?? 0.5,
       safetyFactor: this.safetyFactor,
       minGroundClearance: this.minClearanceM,
       horizontalTensionKN: this.horizontalTensionKN,
       cableDiameterMm: this.cableDiameterMm,
       minBreakingStrengthNPerMm2: this.minBreakingStrengthNPerMm2,
-      cableMaterial: this.cableMaterial
+      cableMaterial: this.cableMaterial,
+      elasticModulusKNPerMm2: this.elasticModulusKNPerMm2,
+      fillFactor: this.fillFactor
     };
 
     this.projectStateService.updateCableConfig(config);
@@ -403,12 +420,15 @@ export class CableConfig {
       cableType: 'carrying',
       cableWeightPerMeter: this.cableWeightNPerM / 9.81,
       maxLoad: this.loadN / 9.81,
+      loadPositionRatio: this.project?.cableConfig.loadPositionRatio ?? 0.5,
       safetyFactor: this.safetyFactor,
       minGroundClearance: this.minClearanceM,
       horizontalTensionKN: this.horizontalTensionKN,
       cableDiameterMm: this.cableDiameterMm,
       minBreakingStrengthNPerMm2: this.minBreakingStrengthNPerMm2,
-      cableMaterial: this.cableMaterial
+      cableMaterial: this.cableMaterial,
+      elasticModulusKNPerMm2: this.elasticModulusKNPerMm2,
+      fillFactor: this.fillFactor
     };
   }
 

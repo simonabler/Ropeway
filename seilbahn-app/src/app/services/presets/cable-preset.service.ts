@@ -125,6 +125,7 @@ export class CablePresetService {
       cableType: 'carrying',
       cableWeightPerMeter: preset.carrier.wNPerM / 9.81, // Convert N/m to kg/m
       maxLoad: preset.load.PN / 9.81, // Convert N to kg
+      loadPositionRatio: 0.5,
       safetyFactor: preset.carrier.safetyFactor,
       minGroundClearance: preset.limits.minClearanceM,
       horizontalTensionKN,
@@ -132,7 +133,9 @@ export class CablePresetService {
       cableDiameterMm: preset.cable.diameterMm,
       minBreakingStrengthNPerMm2: preset.cable.breakingStrengthNPerMm2 || this.deriveStrengthFromBreakingLoad(preset.cable.diameterMm, preset.cable.breakingStrengthKN),
       cableMaterial: preset.cable.material,
-      cableBreakingStrengthKN: preset.cable.breakingStrengthKN
+      cableBreakingStrengthKN: preset.cable.breakingStrengthKN,
+      elasticModulusKNPerMm2: 100,
+      fillFactor: 0.7
     };
   }
 

@@ -1,104 +1,48 @@
-**UI/UX Findings**
-- `High`: Die Berechnung ist in der UI schon freigeschaltet, sobald nur Terrain vorhanden ist, obwohl der Rechner ohne mindestens eine Stütze garantiert in einen Fehler läuft. Das erzeugt einen vermeidbaren Dead-End-Flow für den Nutzer. [calculation-results.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/calculation/calculation-results/calculation-results.ts#L89) [calculation-results.html](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/calculation/calculation-results/calculation-results.html#L22) [cable-calculator.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/cable-calculator.service.ts#L50)
-- `Medium`: In der Preset-Liste liegt ein `button` innerhalb eines anderen `button`. Das ist ungültiges HTML und führt regelmäßig zu Fokus-, Klick- und Accessibility-Problemen, gerade beim Löschen eines User-Presets. [cable-config.html](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/cable/cable-config/cable-config.html#L7) [cable-config.html](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/cable/cable-config/cable-config.html#L25)
-- `Medium`: `Locate me` legt bei jedem Aufruf neue GPS-Marker und Accuracy-Circles an, ohne die alten zu entfernen. Die Karte kann dadurch schnell visuell zugemüllt werden. [map-container.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/map/map-container/map-container.ts#L98) [leaflet-map.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/geo/leaflet-map.service.ts#L329)
+# TODO
 
-**Berechnungs-Findings**
-- `High`: Die konfigurierte Nutzlast wird bei `parabolic` und `catenary` faktisch ignoriert. `pointLoadN` wird zwar aus `maxLoad` berechnet, aber nur in den `catenary-piecewise`-Solver eingespeist. Damit ändern Lastwerte in zwei von drei Solvern die Statik nicht. [cable-calculator.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/cable-calculator.service.ts#L60) [cable-calculator.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/cable-calculator.service.ts#L83) [parabolic-approximation.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/engine/physics/parabolic-approximation.ts#L50) [catenary-approximation.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/engine/physics/catenary-approximation.ts#L26)
-- `High`: Der `catenary-piecewise`-Solver ist inhaltlich nicht mit der UI konsistent. Die Berechnung setzt die Punktlast immer starr in Feldmitte (`0.5`), obwohl die Anwendung an anderer Stelle eine variable Lastposition vermittelt. [cable-calculator.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/cable-calculator.service.ts#L66) [cable-calculator.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/cable-calculator.service.ts#L86)
-- `High`: Im Piecewise-Solver wird `maxTension` nur an den Auflagerpunkten berechnet. Bei einer Punktlast kann das Spannungmaximum aber direkt links oder rechts der Last liegen. Dadurch kann auch die spätere Kapazitätsprüfung zu optimistisch ausfallen. [piecewise-catenary.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/engine/physics/piecewise-catenary.ts#L70) [piecewise-catenary.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/engine/physics/piecewise-catenary.ts#L77) [cable-calculator.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/cable-calculator.service.ts#L181)
+## Open Findings
 
-**Allgemeine Aufbaufehler**
-- `Medium`: `presetModified$` ist ein öffentliches State-API, liefert aber immer `false`, weil die eigentliche Vergleichslogik nur als `TODO` existiert. Jeder spätere Consumer bekommt damit falsche Zustände. [project-state.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/state/project-state.service.ts#L48)
-- `Medium`: Beim Löschen eines ausgewählten User-Presets wird nur das lokale Signal geleert, nicht aber die persistierte `cablePresetId` im Projektstate. Nach Reload verweist das Projekt damit auf ein nicht mehr existentes Preset. [cable-config.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/cable/cable-config/cable-config.ts#L423) [cable-config.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/cable/cable-config/cable-config.ts#L426) [project-state.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/state/project-state.service.ts#L302) [cable-config.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/cable/cable-config/cable-config.ts#L310)
-- `Medium`: System-Presets werden nur beim ersten Anlegen in IndexedDB geschrieben. Änderungen an `system-cable-presets.json` werden bei bestehenden Installationen nicht nachgezogen, wodurch Preset-Fixes oder Korrekturen beim Nutzer hängenbleiben. [cable-preset.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/presets/cable-preset.service.ts#L47) [cable-preset.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/presets/cable-preset.service.ts#L49)
+### UI / UX
+- `Medium`: The preset list still contains a `button` inside another `button`. This is invalid HTML and can cause focus, click, and accessibility issues, especially when deleting a user preset. [cable-config.html](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/cable/cable-config/cable-config.html#L7) [cable-config.html](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/cable/cable-config/cable-config.html#L25)
+- `Medium`: `Locate me` still adds new GPS markers and accuracy circles on every use without clearing the previous ones. The map can become visually cluttered very quickly. [map-container.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/map/map-container/map-container.ts#L98) [leaflet-map.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/geo/leaflet-map.service.ts#L329)
 
----
+### State / Architecture
+- `Medium`: `presetModified$` is still exposed as public state API, but it always returns `false` because the comparison logic is still missing. Any future consumer will receive an incorrect state. [project-state.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/state/project-state.service.ts#L48)
+- `Medium`: Deleting a selected user preset still clears only the local signal, not the persisted `cablePresetId` in project state. After reload, the project can still reference a preset that no longer exists. [cable-config.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/cable/cable-config/cable-config.ts#L423) [cable-config.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/cable/cable-config/cable-config.ts#L426) [project-state.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/state/project-state.service.ts#L302) [cable-config.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/cable/cable-config/cable-config.ts#L310)
+- `Medium`: System presets are only written to IndexedDB on first install. Changes in `system-cable-presets.json` are not migrated to existing installs, so preset fixes can remain stuck on client devices. [cable-preset.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/presets/cable-preset.service.ts#L47) [cable-preset.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/presets/cable-preset.service.ts#L49)
 
-## Plan: Slider mit echter Berechnung vereinheitlichen
+## Recently Completed
 
-### Summary
-- Die drei Slider in der Profilansicht dürfen keine rein lokale Simulation mehr steuern.
-- Änderungen an `Seilzug`, `Punktlast` und `Lastposition` müssen den effektiven Berechnungszustand des Projekts definieren.
-- Mit `Reset` werden die temporären Slider-Overrides verworfen und die gespeicherten Einstellparameter wieder aktiv.
+### Calculation / Solver
+- `Done`: Payload is no longer ignored in `parabolic` and `catenary` result generation. The active load case now feeds the real calculation pipeline instead of affecting only `catenary-piecewise`. [cable-calculator.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/cable-calculator.service.ts) [parabolic-approximation.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/engine/physics/parabolic-approximation.ts) [catenary-approximation.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/engine/physics/catenary-approximation.ts)
+- `Done`: The piecewise solver is no longer locked to a hardcoded mid-span point load. The active load position now comes from central state. [cable-calculator.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/cable-calculator.service.ts) [cable.model.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/models/cable.model.ts)
+- `Done`: `maxTension` in the loaded piecewise case now considers support points and load-adjacent critical points instead of support points only. [piecewise-catenary.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/engine/physics/piecewise-catenary.ts)
+- `Done`: Final result geometry, cable line, and clearance now use the active loaded design case instead of the unloaded baseline. [cable-calculator.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/cable-calculator.service.ts)
+- `Done`: `catenary-piecewise` is now used as real result geometry for the loaded span instead of being limited to a force-only check. [cable-calculator.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/cable-calculator.service.ts)
+- `Done`: Anchor-force direction was normalized to signed global components, and support reactions now use a signed vector balance instead of absolute-value summation. [calculation.model.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/models/calculation.model.ts) [cable-calculator.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/calculation/cable-calculator.service.ts) [calculation-results.html](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/calculation/calculation-results/calculation-results.html)
 
-### Gewähltes Modell
-- Gespeicherte Basiswerte bleiben in `project.cableConfig`
-- Slider-Änderungen werden als temporäre `calculationOverrides` im zentralen State gehalten
-- `Reset` entfernt die Overrides vollständig
-- `CableConfiguration` wird um `loadPositionRatio` erweitert, Default `0.5`
+### Route Persistence
+- `Done`: The project now persists a real geographic `endPoint` in addition to `startPoint`, and `azimuth` is kept in sync from route geometry. [project.model.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/models/project.model.ts) [project-state.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/state/project-state.service.ts)
+- `Done`: Legacy projects without `endPoint` are backfilled from `startPoint + azimuth + terrain length`. [project-state.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/state/project-state.service.ts)
+- `Done`: The map now works with a real end marker and immediately persists completed route edits. [map-container.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/map/map-container/map-container.ts) [leaflet-map.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/geo/leaflet-map.service.ts)
 
-### Wichtige Änderungen
+### Calculation Controls
+- `Done`: The three profile sliders now drive the actual calculation state instead of a chart-only simulation state. [profile-chart.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/visualization/profile-chart/profile-chart.ts) [project-state.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/state/project-state.service.ts)
+- `Done`: `CableConfiguration` now includes `loadPositionRatio`, with legacy fallback to `0.5`. [cable.model.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/models/cable.model.ts) [project-state.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/state/project-state.service.ts)
+- `Done`: Temporary `calculationOverrides` were added so slider edits affect the current calculation without permanently overwriting the saved base configuration. [project-state.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/state/project-state.service.ts)
+- `Done`: The profile panel now has a real reset flow that clears active overrides and restores the saved project parameters. [profile-chart.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/visualization/profile-chart/profile-chart.ts) [profile-chart.html](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/visualization/profile-chart/profile-chart.html)
+- `Done`: Exports and calculation metadata now reflect the active load case and active slider overrides. [calculation.model.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/models/calculation.model.ts) [pdf-export.service.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/services/export/pdf-export.service.ts)
 
-#### Datenmodell und State
-- `CableConfiguration` um `loadPositionRatio: number` im Bereich `0..1` erweitern
-- In `ProjectStateService` temporäre `calculationOverrides` ergänzen für:
-  - `horizontalTensionKN`
-  - `maxLoadKg`
-  - `loadPositionRatio`
-- Einen zentralen effektiven Kabelzustand bilden:
-  - Basis = `project.cableConfig`
-  - Override = aktive Slider-Werte
-- Legacy-Projekte ohne `loadPositionRatio` mit `0.5` laden
+### UI / Safety
+- `Done`: Calculation is no longer enabled with terrain alone; the UI now requires supports before the calculation can run. [calculation-results.ts](C:/Users/ematric/Desktop/Seilbahn/seilbahn-app/src/app/features/calculation/calculation-results/calculation-results.ts)
 
-#### Berechnung
-- `CalculationResults` und der Auto-Recalc dürfen nicht mehr direkt nur `project.cableConfig` lesen
-- Stattdessen muss die Berechnung immer mit der effektiven Konfiguration laufen
-- Der Auto-Calc-Key muss Slider-Overrides berücksichtigen, damit Änderungen sofort neu rechnen
-- `CableCalculatorService` muss effektive Werte für:
-  - `horizontalTensionKN`
-  - `maxLoad`
-  - `loadPositionRatio`
-  bekommen
-- Die lokale Lastpositionslogik im Chart darf nicht mehr von der eigentlichen Berechnung getrennt laufen
+## Recommended Next Steps
+1. Fix the invalid nested `button` structure in the preset picker.
+2. Clean up repeated GPS marker / accuracy-circle creation in `Locate me`.
+3. Implement real `presetModified$` comparison logic.
+4. Clear persisted `cablePresetId` when a selected user preset is deleted.
+5. Add migration or versioning for system preset updates in existing installations.
 
-#### Profilansicht
-- `horizontalTension`, `pointLoad` und `loadPositionPercent` dürfen nicht mehr nur lokaler Chart-State sein
-- Die Slider lesen:
-  - Override-Wert, falls aktiv
-  - sonst den gespeicherten Basiswert
-- Slider schreiben direkt in den zentralen Override-State
-- `pointLoadDirty` und die aktuelle partielle Sync-Logik entfernen
-- Einen echten `Reset`-Button im Slider-Panel ergänzen:
-  - löscht alle drei Overrides
-  - setzt Chart, Berechnung und Ausgaben auf die gespeicherten Projektwerte zurück
-- Texte im Panel anpassen, damit nicht mehr von einer getrennten Simulation gesprochen wird
-
-#### Basiswerte und Reset-Verhalten
-- `Seilzug (H)` reset auf `project.cableConfig.horizontalTensionKN`
-- `Punktlast (P)` reset auf `project.cableConfig.maxLoad`
-- `Lastposition` reset auf `project.cableConfig.loadPositionRatio`
-- Preset-Anwendung und Änderungen in `cable-config` aktualisieren die Basiswerte
-- Wenn neue Basiswerte gesetzt werden, bleiben aktive Overrides bestehen, bis `Reset` gedrückt wird
-
-#### Export und Konsistenz
-- Wenn Overrides aktiv sind, muss Export kenntlich machen, dass mit temporären Slider-Werten gerechnet wurde
-- Exportierte Werte müssen exakt zur effektiven Konfiguration der aktuellen Berechnung passen
-- README / CONTEXT / CLAUDE müssen danach die Slider als aktive Lastfall-Steuerung beschreiben, nicht als getrennte Simulation
-
-### Öffentliche Interface-Änderungen
-- `CableConfiguration`
-  - neues Feld `loadPositionRatio: number`
-- `ProjectStateService`
-  - Override-State für Berechnungsparameter
-  - Methoden wie:
-    - `setCalculationOverride(...)`
-    - `clearCalculationOverrides()`
-    - effektiver Projekt-/Kabelzustand
-- `CalculationResult`
-  - optional aktive Lastfall-Metadaten ergänzen, falls für Export/UI nötig
-
-### Tests
-- Unit-Test: jeder Slider ändert die effektive Konfiguration und triggert Berechnung
-- Unit-Test: `Reset` entfernt Overrides und stellt gespeicherte Basisparameter wieder her
-- Unit-Test: Legacy-Projekte ohne `loadPositionRatio` bekommen `0.5`
-- Unit-Test: Preset-/Kabeländerungen aktualisieren Basiswerte, ohne aktive Overrides sofort zu verlieren
-- Integrationstest: Slider-Änderung im Profil aktualisiert Berechnungspanel im selben Zustand
-- Integrationstest: `T_max`, Auslastung und Kräfte folgen den Slider-Werten
-- Integrationstest: `Reset` stellt Chart und Berechnung auf Projektwerte zurück
-- Export-Test: aktive Overrides werden ausgewiesen und stimmen mit dem aktuellen Rechenergebnis überein
-
-### Annahmen
-- Slider-Werte sind temporäre Session-Overrides und keine permanenten Kabelparameter
-- `loadPositionRatio` wird trotzdem als echter Basisparameter ins Projektmodell aufgenommen
-- Die bisherige Trennung zwischen Simulation und Berechnung wird in der UI entfernt oder klar neu formuliert
+## Verification Note
+- TypeScript compile passed with `node .\\node_modules\\typescript\\lib\\tsc.js -p tsconfig.app.json --noEmit`.
+- Vitest could not be executed successfully in this environment because the worker process startup failed with `spawn EPERM`.

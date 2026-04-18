@@ -19,6 +19,7 @@ import { calculateCatenaryCable } from './engine/physics/catenary-approximation'
 import { calculatePiecewiseCatenaryCable } from './engine/physics/piecewise-catenary';
 import { checkCableClearance, applyClearanceToSpan } from './engine/geometry/clearance-checker';
 import { checkCableCapacity, getCapacityStatusText } from './engine/physics/cable-capacity';
+import { GlobalEngineeringCalculatorService } from './engineering/global-engineering-calculator.service';
 
 type DesignSpanResult = ParabolicResult;
 
@@ -45,10 +46,18 @@ interface WorstCaseDesignResult {
   providedIn: 'root'
 })
 export class CableCalculatorService {
+  constructor(
+    private globalEngineeringCalculatorService: GlobalEngineeringCalculatorService = new GlobalEngineeringCalculatorService()
+  ) {}
+
   /**
    * Calculate complete cable system for project
    */
   calculateCable(project: Project): CalculationResult {
+    if ((project.calculationMode ?? 'planning') === 'engineering') {
+      return this.globalEngineeringCalculatorService.calculate(project);
+    }
+
     const warnings: CalculationWarning[] = [];
     const solverType = project.solverType ?? 'parabolic';
 
@@ -98,7 +107,7 @@ export class CableCalculatorService {
       baseStation += spanGeometry.length;
     }
 
-    const worstCaseDesign = this.calculateWorstCaseDesign(
+    const activeDesignCase = this.calculateActiveDesignCase(
       spanGeometries,
       baselineSpanResults,
       solverType,
@@ -109,18 +118,18 @@ export class CableCalculatorService {
     );
 
     const combinedCableLine = this.combineCableLines(
-      worstCaseDesign.spans,
+      activeDesignCase.spans,
       project.startStation.stationLength
     );
 
-    if (worstCaseDesign.designCheck) {
+    if (activeDesignCase.designCheck) {
       warnings.push({
         severity: 'info',
-        message: `Bemessungsfall mit ungünstigster Punktlastposition bei ${worstCaseDesign.designCheck.governingLoadPositionM.toFixed(1)}m in Spannfeld ${worstCaseDesign.designCheck.governingSpanNumber}.`
+        message: `Aktiver Lastfall mit Punktlastposition bei ${activeDesignCase.designCheck.governingLoadPositionM.toFixed(1)}m in Spannfeld ${activeDesignCase.designCheck.governingSpanNumber}.`
       });
     }
 
-    for (const result of worstCaseDesign.spans) {
+    for (const result of activeDesignCase.spans) {
       if (result.minClearance < project.cableConfig.minGroundClearance) {
         warnings.push({
           severity: 'warning',
@@ -130,7 +139,7 @@ export class CableCalculatorService {
       }
     }
 
-    const spans: SpanResult[] = worstCaseDesign.spans.map((result) => ({
+    const spans: SpanResult[] = activeDesignCase.spans.map((result) => ({
       spanNumber: result.spanNumber,
       fromSupport: result.fromSupportId,
       toSupport: result.toSupportId,
@@ -145,8 +154,8 @@ export class CableCalculatorService {
       minClearanceAt: result.minClearanceAt
     }));
 
-    const maxTension = worstCaseDesign.maxTension;
-    const maxHorizontalForce = worstCaseDesign.maxHorizontalForce;
+    const maxTension = activeDesignCase.maxTension;
+    const maxHorizontalForce = activeDesignCase.maxHorizontalForce;
 
     const customStrength = project.cableConfig.minBreakingStrengthNPerMm2
       ? project.cableConfig.minBreakingStrengthNPerMm2
@@ -179,8 +188,15 @@ export class CableCalculatorService {
 
     return {
       timestamp: new Date(),
+      calculationMode: 'planning',
+      solverFamily: 'planning',
       method: solverType,
-      designCheck: worstCaseDesign.designCheck,
+      modelAssumptions: [
+        'Simplified pretension-driven planning calculation',
+        'Horizontal pretension is treated as primary input',
+        'Not a full global elastic engineering solver'
+      ],
+      designCheck: activeDesignCase.designCheck,
       cableLine: combinedCableLine,
       spans,
       maxTension,
@@ -206,7 +222,7 @@ export class CableCalculatorService {
     return calculateCatenaryCable(spanGeometry, cableWeightN, spanSag);
   }
 
-  private calculateWorstCaseDesign(
+  private calculateActiveDesignCase(
     spanGeometries: SpanGeometry[],
     baselineSpanResults: ParabolicResult[],
     solverType: Project['solverType'],
@@ -225,81 +241,100 @@ export class CableCalculatorService {
       return unloadedResult;
     }
 
-    const candidates = this.buildDesignLoadCandidates(spanGeometries, startStationLength);
-    if (candidates.length === 0) {
+    const candidate = this.buildSelectedLoadCandidate(
+      spanGeometries,
+      startStationLength,
+      project.cableConfig.loadPositionRatio
+    );
+    if (!candidate) {
       return unloadedResult;
     }
 
-    let bestResult = unloadedResult;
-
-    for (const candidate of candidates) {
-      const spans = spanGeometries.map((spanGeometry, index) => {
-        if (index !== candidate.spanIndex) {
-          return baselineSpanResults[index];
-        }
-
-        const loadedSpan = this.calculateLoadedDesignSpan(
-          spanGeometry,
-          baselineSpanResults[index],
-          solverType,
-          cableWeightN,
-          pointLoadN,
-          candidate.loadRatio
-        );
-
-        return this.applySpanClearance(
-          loadedSpan,
-          spanGeometry,
-          spanGeometries.length,
-          project,
-          candidate.spanBaseStationM
-        );
-      });
-
-      const maxTension = Math.max(...spans.map(span => span.maxTension));
-      if (maxTension <= bestResult.maxTension) {
-        continue;
+    const spans = spanGeometries.map((spanGeometry, index) => {
+      if (index !== candidate.spanIndex) {
+        return baselineSpanResults[index];
       }
 
-      bestResult = {
-        spans,
-        maxTension,
-        maxHorizontalForce: Math.max(...spans.map(span => span.horizontalForce)),
-        designCheck: {
-          source: 'worst-case-payload',
-          governingLoadPositionM: candidate.globalPositionM,
-          governingSpanNumber: candidate.spanNumber,
-          governingSpanLoadRatio: candidate.loadRatio
-        }
-      };
-    }
+      const loadedSpan = this.calculateLoadedDesignSpan(
+        spanGeometry,
+        baselineSpanResults[index],
+        solverType,
+        cableWeightN,
+        pointLoadN,
+        candidate.loadRatio
+      );
 
-    return bestResult;
+      return this.applySpanClearance(
+        loadedSpan,
+        spanGeometry,
+        spanGeometries.length,
+        project,
+        candidate.spanBaseStationM
+      );
+    });
+
+    return {
+      spans,
+      maxTension: Math.max(...spans.map(span => span.maxTension)),
+      maxHorizontalForce: Math.max(...spans.map(span => span.horizontalForce)),
+      designCheck: {
+        source: 'selected-payload',
+        governingLoadPositionM: candidate.globalPositionM,
+        governingSpanNumber: candidate.spanNumber,
+        governingSpanLoadRatio: candidate.loadRatio
+      }
+    };
   }
 
-  private buildDesignLoadCandidates(
+  private buildSelectedLoadCandidate(
     spanGeometries: SpanGeometry[],
-    startStationLength: number
-  ): DesignLoadCandidate[] {
-    const sampleRatios = [0.01, 0.05, 0.1, 0.2, 0.33, 0.5, 0.67, 0.8, 0.9, 0.95, 0.99];
-    const candidates: DesignLoadCandidate[] = [];
+    startStationLength: number,
+    globalLoadPositionRatio: number
+  ): DesignLoadCandidate | null {
+    if (spanGeometries.length === 0) {
+      return null;
+    }
+
+    const totalLength = spanGeometries.reduce((sum, span) => sum + span.length, 0);
+    if (totalLength <= 0) {
+      return null;
+    }
+
+    const clampedGlobalRatio = Math.min(Math.max(globalLoadPositionRatio, 0.05), 0.95);
+    const targetOffset = totalLength * clampedGlobalRatio;
+
+    let accumulatedLength = 0;
     let baseStation = startStationLength;
 
     for (let spanIndex = 0; spanIndex < spanGeometries.length; spanIndex++) {
       const spanGeometry = spanGeometries[spanIndex];
-      for (const loadRatio of sampleRatios) {
-        candidates.push({
+      const nextAccumulatedLength = accumulatedLength + spanGeometry.length;
+      const isLastSpan = spanIndex === spanGeometries.length - 1;
+
+      if (targetOffset <= nextAccumulatedLength || isLastSpan) {
+        const localOffset = Math.min(
+          Math.max(targetOffset - accumulatedLength, 0),
+          spanGeometry.length
+        );
+        const loadRatio = Math.min(
+          Math.max(localOffset / spanGeometry.length, 0.01),
+          0.99
+        );
+
+        return {
           globalPositionM: baseStation + spanGeometry.length * loadRatio,
           spanBaseStationM: baseStation,
           spanIndex,
           spanNumber: spanGeometry.spanNumber,
           loadRatio
-        });
+        };
       }
+
+      accumulatedLength = nextAccumulatedLength;
       baseStation += spanGeometry.length;
     }
 
-    return candidates;
+    return null;
   }
 
   private calculateLoadedDesignSpan(
@@ -419,7 +454,12 @@ export class CableCalculatorService {
   ): CalculationResult {
     return {
       timestamp: new Date(),
+      calculationMode: 'planning',
+      solverFamily: 'planning',
       method: method ?? 'parabolic',
+      modelAssumptions: [
+        'Simplified pretension-driven planning calculation'
+      ],
       cableLine: [],
       spans: [],
       maxTension: 0,
@@ -556,6 +596,29 @@ export class CableCalculatorService {
         severity: 'error',
         message: 'Festigkeitsklasse muss angegeben werden.'
       });
+    }
+
+    if ((project.calculationMode ?? 'planning') === 'engineering') {
+      if (
+        !project.cableConfig.elasticModulusKNPerMm2 ||
+        project.cableConfig.elasticModulusKNPerMm2 <= 0
+      ) {
+        warnings.push({
+          severity: 'error',
+          message: 'E-Modul muss im Engineering-Modus größer als 0 sein.'
+        });
+      }
+
+      if (
+        !project.cableConfig.fillFactor ||
+        project.cableConfig.fillFactor <= 0 ||
+        project.cableConfig.fillFactor > 1
+      ) {
+        warnings.push({
+          severity: 'error',
+          message: 'Füllfaktor muss im Engineering-Modus zwischen 0 und 1 liegen.'
+        });
+      }
     }
 
     if (project.cableConfig.safetyFactor < 3) {

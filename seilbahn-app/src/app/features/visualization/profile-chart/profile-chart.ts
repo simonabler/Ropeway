@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import * as d3 from 'd3';
 import { ProjectStateService } from '../../../services/state/project-state.service';
-import { TerrainSegment, Support, CalculationResult } from '../../../models';
+import { TerrainSegment, Support, CalculationResult, CablePoint } from '../../../models';
 import { calculatePiecewiseCatenaryCable } from '../../../services/calculation/engine/physics/piecewise-catenary';
 import { solveCatenaryA } from '../../../services/calculation/engine/physics/catenary-utils';
 
@@ -64,6 +64,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
   // State from services
   private _terrain;
   private _supports;
+  private _effectiveProject;
   private _calculation;
 
   // Chart state
@@ -110,8 +111,6 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
   // Cable weight per meter (N/m)
   cableWeight = signal(15); // N/m (approx. 1.5 kg/m)
-  private lastProjectId: string | null = null;
-  private pointLoadDirty = false;
 
   // Display options
   showEmptyCable = signal(true);
@@ -136,31 +135,27 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
   constructor(private projectStateService: ProjectStateService) {
     this._terrain = toSignal(this.projectStateService.terrain$, { initialValue: [] as TerrainSegment[] });
     this._supports = toSignal(this.projectStateService.supports$, { initialValue: [] as Support[] });
+    this._effectiveProject = toSignal(this.projectStateService.effectiveProject$, { initialValue: null });
     this._calculation = toSignal(this.projectStateService.calculation$, { initialValue: null });
 
     // Effect to re-render chart when data changes
     effect(() => {
       const terrain = this._terrain();
       const supports = this._supports();
+      const project = this._effectiveProject();
       const calculation = this._calculation();
 
       const hasTerrainData = terrain.length > 0;
       this.hasData.set(hasTerrainData);
 
       // Load cable config values
-      const project = this.projectStateService.currentProject;
       if (project) {
         this.cableWeight.set(project.cableConfig.cableWeightPerMeter * 9.81); // kg/m to N/m
-        // Sync H from config
         this.horizontalTension.set(project.cableConfig.horizontalTensionKN || 15);
-        const projectId = project.id;
-        if (projectId !== this.lastProjectId) {
-          this.lastProjectId = projectId;
-          this.pointLoadDirty = false;
-          this.pointLoad.set(project.cableConfig.maxLoad * 9.81); // kg to N
-        } else if (!this.pointLoadDirty) {
-          this.pointLoad.set(project.cableConfig.maxLoad * 9.81); // kg to N
-        }
+        this.pointLoad.set(project.cableConfig.maxLoad * 9.81); // kg to N
+        this.loadPositionPercent.set(
+          Math.round((project.cableConfig.loadPositionRatio ?? 0.5) * 100)
+        );
       }
 
       // Initialize chart when data becomes available and container exists
@@ -192,21 +187,32 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     return this._calculation();
   }
 
+  get effectiveProject() {
+    return this._effectiveProject();
+  }
+
+  private isEngineeringCalculation(): boolean {
+    return this.calculation?.calculationMode === 'engineering';
+  }
+
   // === Control Methods ===
   onTensionChange(value: number): void {
     this.horizontalTension.set(value);
-    this.updateChart();
+    this.projectStateService.setCalculationOverride({ horizontalTensionKN: value });
   }
 
   onLoadPositionChange(value: number): void {
     this.loadPositionPercent.set(value);
-    this.updateChart();
+    this.projectStateService.setCalculationOverride({ loadPositionRatio: value / 100 });
   }
 
   onPointLoadChange(value: number): void {
-    this.pointLoadDirty = true;
     this.pointLoad.set(value);
-    this.updateChart();
+    this.projectStateService.setCalculationOverride({ maxLoad: value / 9.81 });
+  }
+
+  resetCalculationControls(): void {
+    this.projectStateService.clearCalculationOverrides();
   }
 
   toggleEmptyCable(): void {
@@ -431,6 +437,9 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     const emptyCablePoints = this.calculateEmptyCable();
     const loadedCablePoints = this.calculateLoadedCable();
     this.maxLoadEnvelope = this.calculateMaxLoadEnvelope();
+    if (this.isEngineeringCalculation()) {
+      this.updateCriticalPointFromCalculation();
+    }
 
     // Calculate live T_max and capacity check
     this.calculateLiveCapacity();
@@ -478,7 +487,16 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
    * T_max = sqrt(H² + V²) where V is the max vertical force
    */
   private calculateLiveCapacity(): void {
-    const project = this.projectStateService.currentProject;
+    const calculation = this.calculation;
+    if (calculation?.cableCapacityCheck) {
+      this.liveMaxTension.set(calculation.maxTension);
+      this.maxAllowedTensionKN.set(calculation.cableCapacityCheck.maxAllowedTensionKN);
+      this.liveUtilizationPercent.set(calculation.cableCapacityCheck.utilizationPercent);
+      this.liveCapacityStatus.set(calculation.cableCapacityCheck.status);
+      return;
+    }
+
+    const project = this.effectiveProject ?? this.projectStateService.currentProject;
     if (!project) return;
 
     const H = this.horizontalTension() * 1000; // N
@@ -598,6 +616,10 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
    * Point load creates V-shape deflection at load position
    */
   private calculateLoadedCable(): ChartPoint[] {
+    if (this.isEngineeringCalculation()) {
+      return this.getChartPointsFromCableLine(this.calculation?.cableLine);
+    }
+
     const allPoints = this.getSupportPoints();
 
     if (allPoints.length < 2) {
@@ -686,6 +708,10 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
    * Calculate worst-case (max load) envelope along the entire cable
    */
   private calculateMaxLoadEnvelope(): ChartPoint[] {
+    if (this.isEngineeringCalculation()) {
+      return this.getChartPointsFromCableLine(this.calculation?.engineeringMetrics?.envelope?.cableLine);
+    }
+
     const samples = this.buildSpanSamples();
     if (samples.length === 0) {
       this.criticalPoint.set(null);
@@ -738,6 +764,77 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
     this.criticalPoint.set(worstPoint);
     return envelope;
+  }
+
+  private getChartPointsFromCableLine(cableLine?: CablePoint[] | null): ChartPoint[] {
+    if (!cableLine || cableLine.length === 0) {
+      return [];
+    }
+
+    return cableLine.map((point) => ({
+      x: point.stationLength,
+      y: point.height
+    }));
+  }
+
+  private updateCriticalPointFromCalculation(): void {
+    const calculation = this.calculation;
+    if (!calculation || calculation.spans.length === 0) {
+      return;
+    }
+
+    const envelope = calculation.engineeringMetrics?.envelope;
+    if (envelope) {
+      const cableHeight = this.interpolateCablePointHeight(
+        envelope.cableLine,
+        envelope.minClearanceAtM
+      );
+      const terrainHeight = this.interpolateTerrainHeight(envelope.minClearanceAtM);
+      this.criticalPoint.set({
+        x: envelope.minClearanceAtM,
+        cableHeight,
+        terrainHeight,
+        clearance: envelope.minClearanceM,
+        spanIndex: Math.max((calculation.designCheck?.governingSpanNumber ?? 1) - 1, 0)
+      });
+      return;
+    }
+
+    const criticalSpan = calculation.spans.reduce((worst, span) =>
+      span.minClearance < worst.minClearance ? span : worst
+    );
+    const cableHeight = this.interpolateCablePointHeight(
+      calculation.cableLine,
+      criticalSpan.minClearanceAt
+    );
+    const terrainHeight = this.interpolateTerrainHeight(criticalSpan.minClearanceAt);
+
+    this.criticalPoint.set({
+      x: criticalSpan.minClearanceAt,
+      cableHeight,
+      terrainHeight,
+      clearance: criticalSpan.minClearance,
+      spanIndex: Math.max(criticalSpan.spanNumber - 1, 0)
+    });
+  }
+
+  private interpolateCablePointHeight(cableLine: CablePoint[], stationLength: number): number {
+    if (cableLine.length === 0) return 0;
+    if (stationLength <= cableLine[0].stationLength) return cableLine[0].height;
+    if (stationLength >= cableLine[cableLine.length - 1].stationLength) {
+      return cableLine[cableLine.length - 1].height;
+    }
+
+    for (let index = 0; index < cableLine.length - 1; index++) {
+      const current = cableLine[index];
+      const next = cableLine[index + 1];
+      if (stationLength >= current.stationLength && stationLength <= next.stationLength) {
+        const ratio = (stationLength - current.stationLength) / (next.stationLength - current.stationLength);
+        return current.height + (next.height - current.height) * ratio;
+      }
+    }
+
+    return cableLine[cableLine.length - 1].height;
   }
 
   private calculateCatenaryYAtSample(
@@ -900,7 +997,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
    */
   private getSupportPoints(): ChartPoint[] {
     const points: ChartPoint[] = [];
-    const project = this.projectStateService.currentProject;
+    const project = this.effectiveProject ?? this.projectStateService.currentProject;
     const startAnchorHeight = project
       ? project.startStation.terrainHeight + project.startStation.anchorPoint.heightAboveTerrain
       : 0;
@@ -933,7 +1030,8 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getSolverType(): 'parabolic' | 'catenary' | 'catenary-piecewise' {
-    return this.projectStateService.currentProject?.solverType ?? 'parabolic';
+    const solver = this.effectiveProject?.solverType ?? this.projectStateService.currentProject?.solverType ?? 'parabolic';
+    return solver === 'global-elastic-catenary' ? 'catenary-piecewise' : solver;
   }
 
   /**
@@ -1022,6 +1120,12 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
     // Convert to kN
     const toKN = (n: number) => n / 1000;
     const toMagnitudeKN = (n: number) => Math.abs(n) / 1000;
+    const engineeringStartForce = this.isEngineeringCalculation()
+      ? this.calculation?.anchorForces.find(anchor => anchor.type === 'start')
+      : undefined;
+    const engineeringEndForce = this.isEngineeringCalculation()
+      ? this.calculation?.anchorForces.find(anchor => anchor.type === 'end')
+      : undefined;
 
     this.startAnchor.set({
       type: 'start',
@@ -1029,14 +1133,14 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       terrainY: this.interpolateTerrainHeight(firstSpanStart.x),
       anchorY: firstSpanStart.y,
       forces: {
-        horizontal: toMagnitudeKN(H),
-        horizontalSigned: toKN(H),
+        horizontal: engineeringStartForce?.horizontal ?? toMagnitudeKN(H),
+        horizontalSigned: engineeringStartForce?.horizontalSigned ?? toKN(H),
         verticalEmpty: toKN(V_start_empty),
-        verticalLoaded: toKN(V_start_loaded),
+        verticalLoaded: engineeringStartForce?.verticalSigned ?? toKN(V_start_loaded),
         resultantEmpty: toMagnitudeKN(T_start_empty),
-        resultantLoaded: toMagnitudeKN(T_start_loaded),
+        resultantLoaded: engineeringStartForce?.resultant ?? toMagnitudeKN(T_start_loaded),
         angleEmpty: angle_start_empty,
-        angleLoaded: angle_start_loaded
+        angleLoaded: engineeringStartForce?.angle ?? angle_start_loaded
       }
     });
 
@@ -1046,20 +1150,20 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
       terrainY: this.interpolateTerrainHeight(lastSpanEnd.x),
       anchorY: lastSpanEnd.y,
       forces: {
-        horizontal: toMagnitudeKN(H),
-        horizontalSigned: toKN(-H),
+        horizontal: engineeringEndForce?.horizontal ?? toMagnitudeKN(H),
+        horizontalSigned: engineeringEndForce?.horizontalSigned ?? toKN(-H),
         verticalEmpty: toKN(V_end_empty),
-        verticalLoaded: toKN(V_end_loaded),
+        verticalLoaded: engineeringEndForce?.verticalSigned ?? toKN(V_end_loaded),
         resultantEmpty: toMagnitudeKN(T_end_empty),
-        resultantLoaded: toMagnitudeKN(T_end_loaded),
+        resultantLoaded: engineeringEndForce?.resultant ?? toMagnitudeKN(T_end_loaded),
         angleEmpty: angle_end_empty,
-        angleLoaded: angle_end_loaded
+        angleLoaded: engineeringEndForce?.angle ?? angle_end_loaded
       }
     });
   }
 
   get minClearanceThreshold(): number {
-    return this.projectStateService.currentProject?.cableConfig.minGroundClearance ?? 2;
+    return this.effectiveProject?.cableConfig.minGroundClearance ?? this.projectStateService.currentProject?.cableConfig.minGroundClearance ?? 2;
   }
 
   /**
@@ -1470,7 +1574,7 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
 
     clearanceLayer.selectAll('*').remove();
 
-    const project = this.projectStateService.currentProject;
+    const project = this.effectiveProject ?? this.projectStateService.currentProject;
     if (!project) return;
 
     const minClearance = project.cableConfig.minGroundClearance;
@@ -1595,6 +1699,10 @@ export class ProfileChart implements OnInit, AfterViewInit, OnDestroy {
   }
 
   public getLoadPosition(): number {
+    if (this.isEngineeringCalculation() && this.calculation?.designCheck) {
+      return this.calculation.designCheck.governingLoadPositionM;
+    }
+
     const allPoints = this.getSupportPoints();
     if (allPoints.length < 2) return 0;
 
